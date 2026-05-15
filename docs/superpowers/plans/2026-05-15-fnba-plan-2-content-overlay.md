@@ -2086,3 +2086,299 @@ If any of those fail, fix before considering Plan 2 done. Plan 3 (tooltip + opti
 - **Type consistency:** `YahooPlayer` (from Plan 1's `playerMapping.ts`) used uniformly. `FilterSettings` from Task 9 used identically in Task 10 and Task 13. `PageInfo.kind` consumed in Tasks 12, 13, 14. `BootstrapPlayersRequest` / `BootstrapPlayersResponse` defined in Task 4, consumed in Tasks 5, 13.
 
 - **Sortable-columns gap** documented above. Adding it as a 21st task would inflate the plan; deferring matches the user's prior tendency to pick narrower MVPs (chose B in brainstorming question 1).
+
+---
+
+## Post-fixture revisions (2026-05-15, after Task 6 capture)
+
+After capturing real Yahoo HTML in Task 6, two of the assumptions baked into Tasks 7 and 11 turned out to be wrong. The strategy and structure of those tasks are unchanged; the selectors and approach for two specific operations are revised below. **Use this code instead of the original step 7.5 and step 11.4 implementations, and replace step 11.1's test fixture HTML.**
+
+### Findings from the fixture
+
+- Yahoo player anchors are `<a class="Nowrap name F-link playernote" href="https://sports.yahoo.com/nba/players/<id>" data-ys-playerid="<id>" title="<name>">`. The `data-ys-playerid` attribute is the cleanest selector. Using `a[href*="/nba/players/"]` also works (the href contains that path, just on `sports.yahoo.com`), but `data-ys-playerid` skips the regex.
+- Team + position lives in a sibling `<span>` with text shape `LAL - PG,SG`. Class is just Yahoo utility classes (`Fz-xxs`) and not stable to select by. Match by text pattern.
+- Stat cells have NO `data-stat="PTS"` attribute. Markup is `<td class="Alt Ta-end"><div>33.5</div></td>`. To find which `<td>` is which stat, walk the last `<thead>` row and build a label-to-index map. To override the value, set the inner `<div>`'s text content (not the `<td>`'s, otherwise the wrapper div gets clobbered).
+- Yahoo column labels differ from nba.com keys: it shows `ST` not `STL`, and `3PTM` not `3PM`. The override layer needs an nba-key-to-Yahoo-label mapping.
+
+### Required additional task (insert before Task 11)
+
+#### Task 10.5: Extend `BASE_OVERRIDE_COLUMNS` with Yahoo header text
+
+**Files:**
+- Modify: `src/shared/columns.ts`
+
+The `ColumnDef` interface gets an optional `yahooHeader` field. Each entry in `BASE_OVERRIDE_COLUMNS` declares its Yahoo column label.
+
+- [ ] **Step 10.5.1: Replace `src/shared/columns.ts` contents**
+
+```ts
+import type { MeasureType } from "./types.js";
+
+export interface ColumnDef {
+  /** key as returned by leaguedashplayerstats (uppercase) */
+  key: string;
+  /** UI label */
+  label: string;
+  /** which MeasureType call this column comes from */
+  source: MeasureType;
+  /** number of decimal places for display */
+  decimals: number;
+  /** Yahoo's displayed column header (used by the override layer to locate
+   *  the cell in Yahoo's table). Only meaningful for source: "Base" rows. */
+  yahooHeader?: string;
+}
+
+export const ADVANCED_COLUMNS: ColumnDef[] = [
+  { key: "EFG_PCT", label: "eFG%", source: "Advanced", decimals: 3 },
+  { key: "TS_PCT", label: "TS%", source: "Advanced", decimals: 3 },
+  { key: "USG_PCT", label: "USG%", source: "Advanced", decimals: 1 },
+];
+
+export const BASE_OVERRIDE_COLUMNS: ColumnDef[] = [
+  { key: "PTS", label: "PTS", source: "Base", decimals: 1, yahooHeader: "PTS" },
+  { key: "REB", label: "REB", source: "Base", decimals: 1, yahooHeader: "REB" },
+  { key: "AST", label: "AST", source: "Base", decimals: 1, yahooHeader: "AST" },
+  { key: "STL", label: "STL", source: "Base", decimals: 1, yahooHeader: "ST" },
+  { key: "BLK", label: "BLK", source: "Base", decimals: 1, yahooHeader: "BLK" },
+  { key: "FG3M", label: "3PM", source: "Base", decimals: 1, yahooHeader: "3PTM" },
+  { key: "FG_PCT", label: "FG%", source: "Base", decimals: 3, yahooHeader: "FG%" },
+  { key: "FT_PCT", label: "FT%", source: "Base", decimals: 3, yahooHeader: "FT%" },
+  { key: "TOV", label: "TO", source: "Base", decimals: 1, yahooHeader: "TO" },
+];
+```
+
+- [ ] **Step 10.5.2: Verify typecheck**
+
+Run: `npm run typecheck`
+Expected: clean. The field is optional; no consumer breaks.
+
+- [ ] **Step 10.5.3: Commit**
+
+```bash
+git add src/shared/columns.ts
+git commit -m "feat(shared): map Base override columns to Yahoo header labels"
+```
+
+### Replacement: Task 7 Step 7.5 implementation
+
+`src/content/yahoo.ts`:
+```ts
+import type { YahooPlayer } from "../background/playerMapping.js";
+
+const TEAM_POS_RE = /^([A-Z]{2,4})\s*-\s*[A-Z,]+/;
+
+/**
+ * Find the main stats table on a Yahoo Fantasy page. Strategy: pick the table
+ * with the most player anchors (identified by `data-ys-playerid`). Robust to
+ * Yahoo class renames; only assumes the player-anchor attribute name.
+ */
+export function findStatsTable(): HTMLTableElement | null {
+  const tables = Array.from(document.querySelectorAll<HTMLTableElement>("table"));
+  let best: { table: HTMLTableElement; count: number } | null = null;
+  for (const t of tables) {
+    const count = t.querySelectorAll("a[data-ys-playerid]").length;
+    if (count >= 2 && (best === null || count > best.count)) {
+      best = { table: t, count };
+    }
+  }
+  return best?.table ?? null;
+}
+
+/**
+ * Scrape a player from a row. Skips rows that lack a player anchor, a valid
+ * Yahoo player id, a non-empty name, or a recognizable team abbreviation.
+ */
+function scrapeRow(row: HTMLTableRowElement): YahooPlayer | null {
+  const anchor = row.querySelector<HTMLAnchorElement>("a[data-ys-playerid]");
+  if (!anchor) return null;
+  const yahooId = anchor.getAttribute("data-ys-playerid")?.trim() ?? "";
+  if (!/^\d+$/.test(yahooId)) return null;
+  const name = (anchor.getAttribute("title") || anchor.textContent || "").trim();
+  if (!name) return null;
+
+  // Team + position lives in a sibling span with text shape "LAL - PG,SG".
+  let team = "";
+  for (const span of Array.from(row.querySelectorAll<HTMLElement>("span"))) {
+    const text = (span.textContent ?? "").trim();
+    const m = TEAM_POS_RE.exec(text);
+    if (m) {
+      team = m[1]!;
+      break;
+    }
+  }
+  if (!team) return null;
+  return { yahooId, name, team };
+}
+
+export function scrapePlayers(): YahooPlayer[] {
+  const table = findStatsTable();
+  if (!table) return [];
+  const rows = Array.from(table.querySelectorAll<HTMLTableRowElement>("tbody tr"));
+  const out: YahooPlayer[] = [];
+  for (const row of rows) {
+    const p = scrapeRow(row);
+    if (p) out.push(p);
+  }
+  return out;
+}
+
+export function findRowByYahooId(table: HTMLTableElement, yahooId: string): HTMLTableRowElement | null {
+  return table.querySelector<HTMLTableRowElement>(
+    `tbody tr:has(a[data-ys-playerid="${yahooId}"])`,
+  );
+}
+```
+
+### Replacement: Task 11 Step 11.1 test fixture HTML
+
+The `mkTable()` helper builds a small table that mirrors Yahoo's actual structure: a header row with column labels, body rows with player anchors carrying `data-ys-playerid`, and stat cells wrapped in `<div>`.
+
+```ts
+function mkTable(): HTMLTableElement {
+  document.body.innerHTML = `
+    <table>
+      <thead>
+        <tr><th>Players</th><th>PTS</th><th>REB</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><a data-ys-playerid="6014" title="Luka">Luka</a></td><td><div>99.9</div></td><td><div>50.0</div></td></tr>
+        <tr><td><a data-ys-playerid="404" title="Missing">Missing</a></td><td><div>99.9</div></td><td><div>50.0</div></td></tr>
+      </tbody>
+    </table>`;
+  return document.querySelector("table")!;
+}
+```
+
+The assertions in the test change to:
+
+```ts
+it("populates adv values for mapped players", () => {
+  const t = mkTable();
+  renderColumns(t, SAMPLE);
+  const lukaRow = t.querySelector('tr:has(a[data-ys-playerid="6014"])')!;
+  const advCells = Array.from(lukaRow.querySelectorAll("td[data-fnba]"));
+  expect(advCells.map((c) => c.textContent)).toEqual([".563", ".617", "36.8"]);
+});
+
+it("shows dash for unmapped players", () => {
+  const t = mkTable();
+  renderColumns(t, SAMPLE);
+  const missingRow = t.querySelector('tr:has(a[data-ys-playerid="404"])')!;
+  const advCells = Array.from(missingRow.querySelectorAll("td[data-fnba]"));
+  expect(advCells.map((c) => c.textContent)).toEqual(["-", "-", "-"]);
+});
+
+it("overrides Base stat cells via header-index mapping", () => {
+  const t = mkTable();
+  renderColumns(t, SAMPLE);
+  const lukaRow = t.querySelector('tr:has(a[data-ys-playerid="6014"])')!;
+  const ptsCell = lukaRow.children[1] as HTMLElement;
+  expect(ptsCell.textContent).toContain("33.5");
+  expect(ptsCell.hasAttribute("data-fnba-override")).toBe(true);
+});
+```
+
+The idempotence test and the `clearFnbaCells` test do not need their assertions changed; just the new `mkTable()` shape applies. The "appends three advanced column headers" test also still passes (we append to the last thead row).
+
+### Replacement: Task 11 Step 11.4 implementation
+
+`src/content/injectColumns.ts`:
+```ts
+import { ADVANCED_COLUMNS, BASE_OVERRIDE_COLUMNS } from "../shared/columns.js";
+import { formatStat } from "../shared/format.js";
+import type { PlayerStatRow, YahooPlayerId } from "../shared/types.js";
+
+function getYahooIdFromRow(row: HTMLTableRowElement): YahooPlayerId | null {
+  const a = row.querySelector<HTMLAnchorElement>("a[data-ys-playerid]");
+  return a?.getAttribute("data-ys-playerid") ?? null;
+}
+
+/**
+ * Build label-to-column-index map from the LAST `<thead>` row. Yahoo wraps
+ * headers as `<th><div><a>PTS</a></div></th>`; we use textContent and strip
+ * a trailing `*` (projected-stat decoration like `GP*`, `FTA*`).
+ */
+function buildHeaderIndex(table: HTMLTableElement): Map<string, number> {
+  const rows = table.querySelectorAll("thead tr");
+  const labelRow = rows.length > 0 ? rows[rows.length - 1]! : null;
+  const map = new Map<string, number>();
+  if (!labelRow) return map;
+  Array.from(labelRow.children).forEach((cell, i) => {
+    const text = (cell.textContent ?? "").trim().replace(/\*+$/, "").trim();
+    if (text) map.set(text, i);
+  });
+  return map;
+}
+
+/**
+ * Idempotent: removes prior fNBA columns and override marks before rendering.
+ */
+export function renderColumns(
+  table: HTMLTableElement,
+  data: Record<YahooPlayerId, PlayerStatRow | null>,
+): void {
+  clearFnbaCells(table);
+
+  const headerIndex = buildHeaderIndex(table);
+
+  // Append adv column headers to the last thead row (the one with actual labels).
+  const rowsThead = table.querySelectorAll("thead tr");
+  const headerRow = rowsThead.length > 0 ? rowsThead[rowsThead.length - 1]! : null;
+  if (headerRow) {
+    for (const col of ADVANCED_COLUMNS) {
+      const th = document.createElement("th");
+      th.dataset.fnba = col.key;
+      th.textContent = col.label;
+      headerRow.appendChild(th);
+    }
+  }
+
+  const rows = Array.from(table.querySelectorAll<HTMLTableRowElement>("tbody tr"));
+  for (const row of rows) {
+    const yahooId = getYahooIdFromRow(row);
+    const stats = yahooId ? data[yahooId]?.stats ?? null : null;
+
+    // Append adv cells (mirrors header position; null stats render as "-").
+    for (const col of ADVANCED_COLUMNS) {
+      const td = document.createElement("td");
+      td.dataset.fnba = col.key;
+      td.textContent = formatStat(stats?.[col.key] ?? null, col.decimals);
+      row.appendChild(td);
+    }
+
+    // Override Yahoo's Base stat cells in place via the header-index map.
+    if (stats) {
+      for (const col of BASE_OVERRIDE_COLUMNS) {
+        const yahooLabel = col.yahooHeader;
+        if (!yahooLabel) continue;
+        const idx = headerIndex.get(yahooLabel);
+        if (idx === undefined) continue;
+        const cell = row.children[idx] as HTMLElement | undefined;
+        if (!cell) continue;
+        // Yahoo wraps cell content in a `<div>`; target it so we don't clobber the wrapper.
+        const inner = cell.querySelector("div");
+        const target = inner ?? cell;
+        target.textContent = formatStat(stats[col.key] ?? null, col.decimals);
+        cell.dataset.fnbaOverride = "1";
+      }
+    }
+  }
+}
+
+export function clearFnbaCells(table: HTMLTableElement): void {
+  for (const el of Array.from(table.querySelectorAll("[data-fnba]"))) {
+    el.remove();
+  }
+  for (const el of Array.from(table.querySelectorAll<HTMLElement>("[data-fnba-override]"))) {
+    delete el.dataset.fnbaOverride;
+  }
+}
+```
+
+### Verification of revised Tasks 7 and 11
+
+After implementing Task 10.5 + revised Task 7 + revised Task 11:
+- `yahooScrape.test.ts`: still expects the 3 assertions from Task 7 step 7.3 (table found, players present, ids numeric). The team-regex assertion (`^[A-Z]{2,4}$`) passes because `TEAM_POS_RE` extracts exactly 2-4 uppercase letters.
+- `injectColumns.test.ts`: uses revised `mkTable()` shape and revised assertions for the override case. All 6 tests pass.
+
+If the captured My Team fixture (Task 16) has a different two-thead-row structure, only the last row matters for `buildHeaderIndex` and `renderColumns` already targets the last row. No further change needed.
