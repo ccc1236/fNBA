@@ -14,4 +14,7 @@ describe("currentSeason", () => {
   it("returns 2026-27 for Dec 2026", () => {
     expect(currentSeason(new Date("2026-12-31T00:00:00Z"))).toBe("2026-27");
   });
+  it("returns 2024-25 at June 30 23:59:59 UTC (last second of old season)", () => {
+    expect(currentSeason(new Date("2025-06-30T23:59:59Z"))).toBe("2024-25");
+  });
 });

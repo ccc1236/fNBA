@@ -24,8 +24,8 @@ export interface ErrorResponse {
   message: string;
 }
 
-export type Request = GetPlayerStatsRequest;
-export type Response = GetPlayerStatsResponse | ErrorResponse;
+export type MessageRequest = GetPlayerStatsRequest;
+export type MessageResponse = GetPlayerStatsResponse | ErrorResponse;
 
 function isObject(v: unknown): v is Record<string, unknown> {
   return typeof v === "object" && v !== null;
@@ -36,8 +36,8 @@ export function isGetPlayerStatsRequest(v: unknown): v is GetPlayerStatsRequest 
   if (v.type !== "getPlayerStats") return false;
   if (!Array.isArray(v.yahooIds)) return false;
   if (!v.yahooIds.every((id) => typeof id === "string")) return false;
-  if (typeof v.window !== "string" || !WINDOW_KEYS.includes(v.window as WindowKey)) return false;
-  if (typeof v.perMode !== "string" || !PER_MODE_KEYS.includes(v.perMode as PerModeKey)) return false;
+  if (typeof v.window !== "string" || !(WINDOW_KEYS as readonly string[]).includes(v.window)) return false;
+  if (typeof v.perMode !== "string" || !(PER_MODE_KEYS as readonly string[]).includes(v.perMode)) return false;
   if (v.forceFresh !== undefined && typeof v.forceFresh !== "boolean") return false;
   return true;
 }

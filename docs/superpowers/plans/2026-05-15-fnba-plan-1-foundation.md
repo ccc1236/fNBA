@@ -475,8 +475,8 @@ export interface ErrorResponse {
   message: string;
 }
 
-export type Request = GetPlayerStatsRequest;
-export type Response = GetPlayerStatsResponse | ErrorResponse;
+export type MessageRequest = GetPlayerStatsRequest;
+export type MessageResponse = GetPlayerStatsResponse | ErrorResponse;
 
 function isObject(v: unknown): v is Record<string, unknown> {
   return typeof v === "object" && v !== null;
@@ -1361,7 +1361,7 @@ import {
   type ErrorResponse,
   type GetPlayerStatsRequest,
   type GetPlayerStatsResponse,
-  type Response as MsgResponse,
+  type MessageResponse as MsgResponse,
 } from "../shared/messages.js";
 import type { PlayerStatRow, YahooPlayerId } from "../shared/types.js";
 import { log } from "../shared/logger.js";
