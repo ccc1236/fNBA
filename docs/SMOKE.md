@@ -56,19 +56,16 @@ isGetPlayerStatsRequest({ type: "garbage" }); // → false
 
 ## 5. Manual mapping smoke
 
+Dynamic `import()` is forbidden inside service workers (HTML spec), so we
+call `saveMapping` via the `fnba` debug object instead:
+
 ```js
-const { saveMapping } = await import(
-  chrome.runtime.getURL("assets/playerMapping.js")
-);
-// Pick a Yahoo player ID you know maps to a real NBA player.
-// Find an NBA ID by grepping the response of step 2 in the Network tab.
-await saveMapping("2025-26", [
-  { yahooId: "6015", nbaId: 1629029, name: "Luka Dončić", matchedBy: "manual" },
+await fnba.saveMapping("2025-26", [
+  { yahooId: "luka", nbaId: 1629029, name: "Luka Dončić", matchedBy: "manual" },
 ]);
-// Re-run step 2 with that yahooId; the entry should now be populated.
 await fnba.getPlayerStats({
   type: "getPlayerStats",
-  yahooIds: ["6015"],
+  yahooIds: ["luka"],
   window: "Season",
   perMode: "PerGame",
 });

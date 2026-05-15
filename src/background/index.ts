@@ -1,7 +1,7 @@
 import { Cache } from "./cache.js";
 import { Throttle, ThrottledError } from "./throttle.js";
 import { fetchLeagueDashPlayerStats, RateLimitedError, UpstreamUnavailableError } from "./nbaClient.js";
-import { loadMapping } from "./playerMapping.js";
+import { loadMapping, saveMapping } from "./playerMapping.js";
 import { currentSeason } from "./season.js";
 import { windowByKey } from "../shared/windows.js";
 import { ADVANCED_COLUMNS, BASE_OVERRIDE_COLUMNS } from "../shared/columns.js";
@@ -99,6 +99,8 @@ void cache.open();
   BASE_OVERRIDE_COLUMNS,
   cache,
   getPlayerStats: handleGetPlayerStats,
+  saveMapping,
+  loadMapping,
 };
 
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
