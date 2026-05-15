@@ -3,7 +3,6 @@ import { Throttle, ThrottledError } from "./throttle.js";
 import { fetchLeagueDashPlayerStats, RateLimitedError, UpstreamUnavailableError } from "./nbaClient.js";
 import { loadMapping } from "./playerMapping.js";
 import { currentSeason } from "./season.js";
-import { perModeByKey } from "../shared/perModes.js";
 import { windowByKey } from "../shared/windows.js";
 import { ADVANCED_COLUMNS, BASE_OVERRIDE_COLUMNS } from "../shared/columns.js";
 import {
@@ -36,7 +35,7 @@ async function fetchWithCache(
     fetchLeagueDashPlayerStats({
       season,
       measureType: measure,
-      perMode: perModeByKey(req.perMode).apiValue as GetPlayerStatsRequest["perMode"],
+      perMode: req.perMode,
       lastNGames: windowByKey(req.window).lastNGames,
     }),
   );

@@ -12,6 +12,7 @@ export interface CacheOptions {
 
 export class Cache {
   private db: IDBDatabase | null = null;
+  private openPromise: Promise<IDBDatabase> | null = null;
   private readonly storeName: string;
   private readonly defaultTtl: number;
 
@@ -20,26 +21,32 @@ export class Cache {
     this.defaultTtl = opts.defaultTtlMs ?? 6 * 60 * 60 * 1000; // 6h
   }
 
+  /** Idempotent: safe to call concurrently and repeatedly. */
   async open(): Promise<void> {
-    this.db = await new Promise<IDBDatabase>((resolve, reject) => {
-      const req = indexedDB.open(this.opts.dbName, 1);
-      req.onupgradeneeded = () => {
-        req.result.createObjectStore(this.storeName, { keyPath: "key" });
-      };
-      req.onsuccess = () => resolve(req.result);
-      req.onerror = () => reject(req.error);
-      req.onblocked = () => reject(new Error(`cache open blocked: ${this.opts.dbName}`));
-    });
+    if (this.db) return;
+    if (!this.openPromise) {
+      this.openPromise = new Promise<IDBDatabase>((resolve, reject) => {
+        const req = indexedDB.open(this.opts.dbName, 1);
+        req.onupgradeneeded = () => {
+          req.result.createObjectStore(this.storeName, { keyPath: "key" });
+        };
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req.error);
+        req.onblocked = () => reject(new Error(`cache open blocked: ${this.opts.dbName}`));
+      });
+    }
+    this.db = await this.openPromise;
   }
 
-  private tx(mode: IDBTransactionMode): IDBObjectStore {
-    if (!this.db) throw new Error("cache not opened");
-    return this.db.transaction(this.storeName, mode).objectStore(this.storeName);
+  private async tx(mode: IDBTransactionMode): Promise<IDBObjectStore> {
+    if (!this.db) await this.open();
+    return this.db!.transaction(this.storeName, mode).objectStore(this.storeName);
   }
 
   async get<T>(key: string): Promise<T | null> {
+    const store = await this.tx("readonly");
     const entry = await new Promise<Entry<T> | undefined>((resolve, reject) => {
-      const req = this.tx("readonly").get(key);
+      const req = store.get(key);
       req.onsuccess = () => resolve(req.result as Entry<T> | undefined);
       req.onerror = () => reject(req.error);
     });
@@ -53,24 +60,27 @@ export class Cache {
 
   async set<T>(key: string, value: T, ttlMs?: number): Promise<void> {
     const entry: Entry<T> = { key, value, expiresAt: Date.now() + (ttlMs ?? this.defaultTtl) };
+    const store = await this.tx("readwrite");
     await new Promise<void>((resolve, reject) => {
-      const req = this.tx("readwrite").put(entry);
+      const req = store.put(entry);
       req.onsuccess = () => resolve();
       req.onerror = () => reject(req.error);
     });
   }
 
   async invalidate(key: string): Promise<void> {
+    const store = await this.tx("readwrite");
     await new Promise<void>((resolve, reject) => {
-      const req = this.tx("readwrite").delete(key);
+      const req = store.delete(key);
       req.onsuccess = () => resolve();
       req.onerror = () => reject(req.error);
     });
   }
 
   async clear(): Promise<void> {
+    const store = await this.tx("readwrite");
     await new Promise<void>((resolve, reject) => {
-      const req = this.tx("readwrite").clear();
+      const req = store.clear();
       req.onsuccess = () => resolve();
       req.onerror = () => reject(req.error);
     });
