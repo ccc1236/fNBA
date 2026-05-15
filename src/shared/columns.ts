@@ -9,6 +9,9 @@ export interface ColumnDef {
   source: MeasureType;
   /** number of decimal places for display */
   decimals: number;
+  /** Yahoo's displayed column header (used by the override layer to locate
+   *  the cell in Yahoo's table). Only meaningful for source: "Base" rows. */
+  yahooHeader?: string;
 }
 
 export const ADVANCED_COLUMNS: ColumnDef[] = [
@@ -17,16 +20,14 @@ export const ADVANCED_COLUMNS: ColumnDef[] = [
   { key: "USG_PCT", label: "USG%", source: "Advanced", decimals: 1 },
 ];
 
-/** Columns the override layer needs from MeasureType=Base. Used by content
- *  script to know which Yahoo cells it should replace. */
 export const BASE_OVERRIDE_COLUMNS: ColumnDef[] = [
-  { key: "PTS", label: "PTS", source: "Base", decimals: 1 },
-  { key: "REB", label: "REB", source: "Base", decimals: 1 },
-  { key: "AST", label: "AST", source: "Base", decimals: 1 },
-  { key: "STL", label: "STL", source: "Base", decimals: 1 },
-  { key: "BLK", label: "BLK", source: "Base", decimals: 1 },
-  { key: "FG3M", label: "3PM", source: "Base", decimals: 1 },
-  { key: "FG_PCT", label: "FG%", source: "Base", decimals: 3 },
-  { key: "FT_PCT", label: "FT%", source: "Base", decimals: 3 },
-  { key: "TOV", label: "TO", source: "Base", decimals: 1 },
+  { key: "PTS", label: "PTS", source: "Base", decimals: 1, yahooHeader: "PTS" },
+  { key: "REB", label: "REB", source: "Base", decimals: 1, yahooHeader: "REB" },
+  { key: "AST", label: "AST", source: "Base", decimals: 1, yahooHeader: "AST" },
+  { key: "STL", label: "STL", source: "Base", decimals: 1, yahooHeader: "ST" },
+  { key: "BLK", label: "BLK", source: "Base", decimals: 1, yahooHeader: "BLK" },
+  { key: "FG3M", label: "3PM", source: "Base", decimals: 1, yahooHeader: "3PTM" },
+  { key: "FG_PCT", label: "FG%", source: "Base", decimals: 3, yahooHeader: "FG%" },
+  { key: "FT_PCT", label: "FT%", source: "Base", decimals: 3, yahooHeader: "FT%" },
+  { key: "TOV", label: "TO", source: "Base", decimals: 1, yahooHeader: "TO" },
 ];
