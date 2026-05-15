@@ -28,6 +28,7 @@ export class Cache {
       };
       req.onsuccess = () => resolve(req.result);
       req.onerror = () => reject(req.error);
+      req.onblocked = () => reject(new Error(`cache open blocked: ${this.opts.dbName}`));
     });
   }
 
