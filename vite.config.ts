@@ -13,6 +13,7 @@ export default defineConfig({
       ["test/unit/yahooScrape.test.ts", "jsdom"],
       ["test/unit/pages.*.test.ts", "jsdom"],
       ["test/unit/filterBar.test.ts", "jsdom"],
+      ["test/unit/injectColumns.test.ts", "jsdom"],
     ],
   },
 });
