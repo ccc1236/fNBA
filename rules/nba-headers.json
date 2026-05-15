@@ -1,0 +1,30 @@
+[
+  {
+    "id": 1,
+    "priority": 1,
+    "action": {
+      "type": "modifyHeaders",
+      "requestHeaders": [
+        { "header": "Referer", "operation": "set", "value": "https://www.nba.com/" },
+        { "header": "Origin", "operation": "set", "value": "https://www.nba.com" },
+        { "header": "x-nba-stats-origin", "operation": "set", "value": "stats" },
+        { "header": "x-nba-stats-token", "operation": "set", "value": "true" },
+        { "header": "Accept", "operation": "set", "value": "application/json, text/plain, */*" },
+        { "header": "Accept-Language", "operation": "set", "value": "en-US,en;q=0.9" },
+        { "header": "User-Agent", "operation": "set", "value": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36" },
+        { "header": "Sec-Fetch-Site", "operation": "remove" },
+        { "header": "Sec-Fetch-Mode", "operation": "remove" },
+        { "header": "Sec-Fetch-Dest", "operation": "remove" },
+        { "header": "sec-ch-ua", "operation": "remove" },
+        { "header": "sec-ch-ua-mobile", "operation": "remove" },
+        { "header": "sec-ch-ua-platform", "operation": "remove" },
+        { "header": "sec-ch-ua-platform-version", "operation": "remove" },
+        { "header": "sec-ch-ua-full-version-list", "operation": "remove" }
+      ]
+    },
+    "condition": {
+      "urlFilter": "||stats.nba.com/",
+      "resourceTypes": ["xmlhttprequest"]
+    }
+  }
+]

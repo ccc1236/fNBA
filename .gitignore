@@ -8,3 +8,9 @@ dist/
 
 # Brainstorming mockups (visual companion artifacts)
 .superpowers/
+
+*.crx
+*.zip
+
+# Local Claude Code session state
+.claude/
