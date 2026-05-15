@@ -1,4 +1,5 @@
-import type { PerModeKey, PlayerStatRow, WindowKey, YahooPlayerId } from "./types.js";
+import type { PerModeKey, PlayerStatRow, SeasonString, WindowKey, YahooPlayerId } from "./types.js";
+import type { YahooPlayer } from "../background/playerMapping.js";
 
 export const WINDOW_KEYS: readonly WindowKey[] = ["Season", "Last5", "Last10"];
 export const PER_MODE_KEYS: readonly PerModeKey[] = ["PerGame", "Per36", "Per100Possessions"];
@@ -39,5 +40,34 @@ export function isGetPlayerStatsRequest(v: unknown): v is GetPlayerStatsRequest 
   if (typeof v.window !== "string" || !(WINDOW_KEYS as readonly string[]).includes(v.window)) return false;
   if (typeof v.perMode !== "string" || !(PER_MODE_KEYS as readonly string[]).includes(v.perMode)) return false;
   if (v.forceFresh !== undefined && typeof v.forceFresh !== "boolean") return false;
+  return true;
+}
+
+export interface BootstrapPlayersRequest {
+  type: "bootstrapPlayers";
+  season: SeasonString;
+  players: YahooPlayer[];
+}
+
+export interface BootstrapPlayersResponse {
+  type: "bootstrapPlayersResponse";
+  added: number;
+  unmapped: YahooPlayerId[];
+}
+
+export type AnyRequest = GetPlayerStatsRequest | BootstrapPlayersRequest;
+export type AnyResponse = GetPlayerStatsResponse | BootstrapPlayersResponse | ErrorResponse;
+
+export function isBootstrapPlayersRequest(v: unknown): v is BootstrapPlayersRequest {
+  if (!isObject(v)) return false;
+  if (v.type !== "bootstrapPlayers") return false;
+  if (typeof v.season !== "string") return false;
+  if (!Array.isArray(v.players)) return false;
+  for (const p of v.players) {
+    if (!isObject(p)) return false;
+    if (typeof p.yahooId !== "string") return false;
+    if (typeof p.name !== "string") return false;
+    if (typeof p.team !== "string") return false;
+  }
   return true;
 }
