@@ -11,3 +11,6 @@ dist/
 
 *.crx
 *.zip
+
+# Local Claude Code session state
+.claude/
