@@ -90,11 +90,15 @@ async function handleGetPlayerStats(req: GetPlayerStatsRequest): Promise<MsgResp
 // Eagerly open the cache so first request is fast.
 void cache.open();
 
-// Expose configs to the SW console for manual smoke-testing.
+// Expose configs and the handler to the SW console for manual smoke-testing.
+// chrome.runtime.sendMessage called from inside the SW does NOT loop back to
+// its own onMessage listener — it dispatches to other contexts. So smoke tests
+// from the SW devtools call `fnba.getPlayerStats(...)` directly instead.
 (globalThis as unknown as Record<string, unknown>).fnba = {
   ADVANCED_COLUMNS,
   BASE_OVERRIDE_COLUMNS,
   cache,
+  getPlayerStats: handleGetPlayerStats,
 };
 
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
