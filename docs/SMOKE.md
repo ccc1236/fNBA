@@ -81,3 +81,51 @@ await fnba.cache.get("lps:2025-26:Base:PerGame:0"); // returns the cached rows a
 ```
 
 A non-null return after step 2 confirms IndexedDB persistence is working.
+
+---
+
+# Smoke Test - Plan 2
+
+Run after `npm run build` and reloading the unpacked extension.
+
+## 1. Navigate to your league's Players page
+
+Visit `https://basketball.fantasysports.yahoo.com/nba/<leagueId>/players`.
+
+Expected within ~2s of page load:
+- A horizontal fNBA filter bar appears above the stats table.
+- Three new column headers (eFG%, TS%, USG%) appear at the right edge of the table header.
+- Each player row has three new cells with real values (e.g. `.563`, `.617`, `36.8`). Mapped players show numbers; unmapped show `-`.
+- The traditional stat cells (PTS, REB, AST, etc.) match nba.com Season + Per Game numbers (since Season + PerGame is the default filter).
+- Yahoo's native stat-range filter is greyed out with "(fNBA active)" appended.
+
+## 2. Change the window dropdown to "L5"
+
+Within ~1s:
+- Every cell repaints with Last-5-games values.
+- The status pill shows "Updated <time>".
+- A new pair of nba.com requests fires (visible in DevTools Network if the page is open).
+
+## 3. Switch per-mode to "Per 36"
+
+Cells re-paint with per-36-minute values. Round-trip should be sub-second (cache hit).
+
+## 4. Click the refresh button
+
+Even though the cache is warm, a fresh network request fires. The cells re-paint (likely identical values, but a new `fetchedAt`).
+
+## 5. Navigate to My Team
+
+Same overlay applies. Bench and starter rows both get fNBA columns.
+
+## 6. Reload the page
+
+Filter selections persist (chrome.storage.sync). Last5/Per36 should be pre-selected.
+
+## 7. Service worker debug
+
+Open the SW DevTools. Run:
+```js
+await fnba.loadMapping("2025-26");
+```
+Expected: an array with one entry per Yahoo player you have viewed across My Team and Players. Length grows as you visit different pages and rosters.
