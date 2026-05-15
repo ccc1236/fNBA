@@ -33,3 +33,21 @@ describe("yahoo scraper - Players page", () => {
     expect(players.every((p) => /^\d+$/.test(p.yahooId))).toBe(true);
   });
 });
+
+describe("yahoo scraper - My Team page", () => {
+  beforeAll(() => {
+    document.documentElement.innerHTML = readFileSync(
+      resolve(FIXTURE_DIR, "myTeam.html"),
+      "utf8",
+    );
+  });
+
+  it("scrapes at least one roster player", () => {
+    const players = scrapePlayers();
+    expect(players.length).toBeGreaterThan(0);
+  });
+
+  it("each scraped player has a numeric Yahoo id", () => {
+    expect(scrapePlayers().every((p) => /^\d+$/.test(p.yahooId))).toBe(true);
+  });
+});
