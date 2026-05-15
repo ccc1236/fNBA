@@ -25,7 +25,16 @@ async function saveNbaList(season: SeasonString, list: NbaPlayer[]): Promise<voi
   await chrome.storage.local.set({ [NBA_LIST_KEY(season)]: list });
 }
 
-export async function bootstrapPlayers(
+/**
+ * Module-level serialization queue. Multiple tabs (My Team + Players) can
+ * trigger bootstrap concurrently. Without serialization the load-mapping +
+ * compute-new + save-mapping sequence is a classic last-write-wins race that
+ * silently drops entries. chrome.storage has no CAS, so we serialize in the
+ * SW (which is the single owner of mapping writes).
+ */
+let queue: Promise<unknown> = Promise.resolve();
+
+async function doBootstrap(
   season: SeasonString,
   yahooPlayers: YahooPlayer[],
 ): Promise<BootstrapResult> {
@@ -47,4 +56,14 @@ export async function bootstrapPlayers(
     await saveMapping(season, [...existing, ...newEntries]);
   }
   return { added: newEntries.length, unmapped };
+}
+
+export async function bootstrapPlayers(
+  season: SeasonString,
+  yahooPlayers: YahooPlayer[],
+): Promise<BootstrapResult> {
+  const next = queue.then(() => doBootstrap(season, yahooPlayers));
+  // Swallow rejections on the queue so one failure doesn't poison subsequent calls.
+  queue = next.catch(() => undefined);
+  return next;
 }

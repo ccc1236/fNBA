@@ -29,6 +29,14 @@ function parse(raw: RawResponse): NbaPlayer[] {
   const iName = rs.headers.indexOf("DISPLAY_FIRST_LAST");
   const iTeam = rs.headers.indexOf("TEAM_ABBREVIATION");
   const iRoster = rs.headers.indexOf("ROSTERSTATUS");
+  // Guard against schema drift. Without this, missing headers produce
+  // row[-1] === undefined and `undefined as number` poisons the mapping
+  // with NaN IDs that silently never match.
+  if (iId === -1 || iName === -1 || iTeam === -1 || iRoster === -1) {
+    throw new Error(
+      `commonallplayers schema drift: missing one of PERSON_ID/DISPLAY_FIRST_LAST/TEAM_ABBREVIATION/ROSTERSTATUS in ${JSON.stringify(rs.headers)}`,
+    );
+  }
   const out: NbaPlayer[] = [];
   for (const row of rs.rowSet) {
     if (row[iRoster] !== 1) continue;
