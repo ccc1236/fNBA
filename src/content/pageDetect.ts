@@ -6,7 +6,9 @@ export interface PageInfo {
 }
 
 const HOST = "basketball.fantasysports.yahoo.com";
-const ROUTE_RE = /^\/nba\/([^/]+)\/(team|players)\/?$/;
+// My Team URLs use either the literal "team" or a numeric team ID
+// (e.g. /nba/9144/1). The Players page is always literal "players".
+const ROUTE_RE = /^\/nba\/([^/]+)\/(team|players|\d+)\/?$/;
 
 export function detectPage(href: string): PageInfo {
   let url: URL;
@@ -20,6 +22,6 @@ export function detectPage(href: string): PageInfo {
   if (!m) return { kind: "unknown" };
   const leagueId = m[1]!;
   const route = m[2]!;
-  if (route === "team") return { kind: "myTeam", leagueId };
-  return { kind: "players", leagueId };
+  if (route === "players") return { kind: "players", leagueId };
+  return { kind: "myTeam", leagueId };
 }

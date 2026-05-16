@@ -110,6 +110,10 @@ The filter bar, cache keys, table columns, and tooltip rows all read from these 
 
 **Yahoo wraps each stat cell's value in a `<div>`.** Override the inner `<div>`'s `textContent`, not the `<td>`'s. Clobbering the cell directly removes the wrapper and breaks Yahoo's styling.
 
+**Ratio stats are scale-invariant across PerMode.** `EFG_PCT`, `TS_PCT`, `USG_PCT`, `FG_PCT`, `FT_PCT`, `FG3_PCT` are all ratios or per-possession rates. Changing `PerMode` (Per Game / Per 36 / Per 100) does not change their values, only counting stats (PTS, REB, AST, etc.) scale. nba.com returns identical numbers for these columns regardless of `PerMode`. This is correct behavior, not a bug. The window (Season / L5 / L10) does change them because the game sample changes.
+
+**`ensureTableFits` must measure widths in one pass before mutating.** Yahoo's flex/grid containers reflow when you set `width:100%` on a child, which changes parent computed widths mid-walk. The function in `src/pages/players.ts` collects the full ancestor chain and original widths first, finds the narrowing point (first ancestor whose width is at least 1.05x its deeper neighbor's), then applies styles in a separate pass. Mutating during the walk was the source of two bugs: missing the narrowing point entirely on My Team, and detection threshold creep (1.2 -> 1.1 -> 1.05).
+
 ## What is and is not in scope
 
 In scope:

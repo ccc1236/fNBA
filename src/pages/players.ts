@@ -43,82 +43,93 @@ async function send<T>(req: unknown): Promise<T> {
 function ensureTableFits(table: HTMLTableElement): () => void {
   const restorers: Array<() => void> = [];
 
-  // Walk up the ancestor chain. Widen every level with a fixed pixel width
-  // (using !important to beat Yahoo's stylesheet specificity) so the chain
-  // can grow with the table. The OUTERMOST widened level (the "narrowing
-  // point") gets breathing-room margins and an ultra-wide cap, so the page
-  // doesn't go edge-to-edge on a 4K monitor. Stop at the narrowing point
-  // so Yahoo's outer chrome (branding, top nav, footer) keeps its layout.
-  let cur: HTMLElement | null = table.parentElement;
-  let depth = 0;
   const MAX_DEPTH = 14;
-  // Parent must be at least 1.1x wider than child to count as the narrowing
-  // point. Was 1.2 but narrow viewports (~1536px) only produce a ~1.16x
-  // ratio at Yahoo's .Page level, which made detection miss entirely.
-  const WIDER_BY = 1.1;
-  // Viewport-scaled margins: full size on wide monitors, auto-shrinks on
+  // Narrowing point = first ancestor that's at least 1.05x wider than the
+  // previous (deeper) one. Captures both Yahoo layouts: Players page
+  // (.Page = 1312 sits inside Page-wrap = 1901 at any viewport) and
+  // My Team (.RailResponsive = 1312 sits inside .Rail = 1521+ at viewports
+  // where the right rail is present).
+  const WIDER_BY = 1.05;
+  // Viewport-scaled padding: full size on wide monitors, auto-shrinks on
   // narrow ones so the table never clips and never goes edge-to-edge.
-  // Computed in JS (rather than CSS min()) for predictable inline-style
-  // behavior across all Chromium versions.
   const vw = window.innerWidth;
   const leftPx = Math.round(Math.min(200, vw * 0.08));
   const rightPx = Math.round(Math.min(250, vw * 0.10));
   const ULTRA_WIDE_CAP_PX = 2400; // sensible max on very wide monitors
-  while (cur && cur !== document.body && cur !== document.documentElement && depth < MAX_DEPTH) {
-    const parent = cur.parentElement;
-    if (!parent) break;
-    const cs = getComputedStyle(cur);
-    const w = cs.width;
-    const wNum = parseFloat(w);
-    const pwNum = parseFloat(getComputedStyle(parent).width);
-    const isNarrowingPoint = pwNum > 0 && pwNum > wNum * WIDER_BY;
 
-    if (w && w.endsWith("px") && w !== "0px") {
-      const el = cur;
-      const prev = el.style.getPropertyValue("width");
-      const prevPrio = el.style.getPropertyPriority("width");
-      const prevMax = el.style.getPropertyValue("max-width");
-      const prevMaxPrio = el.style.getPropertyPriority("max-width");
-      const prevML = el.style.getPropertyValue("margin-left");
-      const prevMLPrio = el.style.getPropertyPriority("margin-left");
-      const prevMR = el.style.getPropertyValue("margin-right");
-      const prevMRPrio = el.style.getPropertyPriority("margin-right");
-      const prevPL = el.style.getPropertyValue("padding-left");
-      const prevPLPrio = el.style.getPropertyPriority("padding-left");
-      const prevPR = el.style.getPropertyValue("padding-right");
-      const prevPRPrio = el.style.getPropertyPriority("padding-right");
-      const prevBS = el.style.getPropertyValue("box-sizing");
-      const prevBSPrio = el.style.getPropertyPriority("box-sizing");
+  // PASS 1: Collect the ancestor chain and original widths WITHOUT mutating
+  // anything. Mutating mid-walk caused Yahoo's flex/grid containers to
+  // reflow, which made later parent-width reads inconsistent with earlier
+  // ones (a parent measured as 1312 from its child's perspective but 1521
+  // when measured directly one iteration later).
+  const chain: HTMLElement[] = [];
+  const widths: number[] = [];
+  {
+    let cur: HTMLElement | null = table.parentElement;
+    let depth = 0;
+    while (cur && cur !== document.body && cur !== document.documentElement && depth < MAX_DEPTH) {
+      const cs = getComputedStyle(cur);
+      const wNum = parseFloat(cs.width);
+      if (!Number.isFinite(wNum) || wNum <= 0) break;
+      chain.push(cur);
+      widths.push(wNum);
+      cur = cur.parentElement;
+      depth++;
+    }
+  }
 
-      if (isNarrowingPoint) {
-        // Use padding (not margin) so breathing room renders regardless of
-        // the containing block's layout mode (flex/grid/absolute can ignore
-        // margins). box-sizing: border-box keeps the element's outer width
-        // at 100% of its parent while padding pushes content inward.
-        el.style.setProperty("width", "100%", "important");
-        el.style.setProperty("max-width", `${ULTRA_WIDE_CAP_PX}px`, "important");
-        el.style.setProperty("box-sizing", "border-box", "important");
-        el.style.setProperty("padding-left", `${leftPx}px`, "important");
-        el.style.setProperty("padding-right", `${rightPx}px`, "important");
-      } else {
-        el.style.setProperty("width", "100%", "important");
-        el.style.setProperty("max-width", "none", "important");
-      }
+  // Find the first ancestor whose width jumps up by WIDER_BY versus the
+  // immediately deeper one. That deeper one (index `narrowingIndex`) is the
+  // "narrow side" we expand and pad. If no jump is found, default to the
+  // outermost ancestor in the chain.
+  let narrowingIndex = -1;
+  for (let i = 0; i < widths.length - 1; i++) {
+    const w = widths[i]!;
+    const pw = widths[i + 1]!;
+    if (pw > w * WIDER_BY) {
+      narrowingIndex = i;
+      break;
+    }
+  }
+  if (narrowingIndex < 0) narrowingIndex = chain.length - 1;
 
-      restorers.push(() => {
-        el.style.setProperty("width", prev, prevPrio);
-        el.style.setProperty("max-width", prevMax, prevMaxPrio);
-        el.style.setProperty("margin-left", prevML, prevMLPrio);
-        el.style.setProperty("margin-right", prevMR, prevMRPrio);
-        el.style.setProperty("padding-left", prevPL, prevPLPrio);
-        el.style.setProperty("padding-right", prevPR, prevPRPrio);
-        el.style.setProperty("box-sizing", prevBS, prevBSPrio);
-      });
+  // PASS 2: apply styles. Widen every level up to and including the
+  // narrowing point; stop there to leave Yahoo's outer chrome alone.
+  for (let i = 0; i <= narrowingIndex && i < chain.length; i++) {
+    const el = chain[i]!;
+    const prev = el.style.getPropertyValue("width");
+    const prevPrio = el.style.getPropertyPriority("width");
+    const prevMax = el.style.getPropertyValue("max-width");
+    const prevMaxPrio = el.style.getPropertyPriority("max-width");
+    const prevPL = el.style.getPropertyValue("padding-left");
+    const prevPLPrio = el.style.getPropertyPriority("padding-left");
+    const prevPR = el.style.getPropertyValue("padding-right");
+    const prevPRPrio = el.style.getPropertyPriority("padding-right");
+    const prevBS = el.style.getPropertyValue("box-sizing");
+    const prevBSPrio = el.style.getPropertyPriority("box-sizing");
+
+    if (i === narrowingIndex) {
+      // Padding (not margin) so breathing room renders regardless of the
+      // containing block's layout mode. box-sizing: border-box keeps the
+      // element's outer width at 100% of its parent while padding pushes
+      // content inward.
+      el.style.setProperty("width", "100%", "important");
+      el.style.setProperty("max-width", `${ULTRA_WIDE_CAP_PX}px`, "important");
+      el.style.setProperty("box-sizing", "border-box", "important");
+      el.style.setProperty("padding-left", `${leftPx}px`, "important");
+      el.style.setProperty("padding-right", `${rightPx}px`, "important");
+    } else {
+      el.style.setProperty("width", "100%", "important");
+      el.style.setProperty("max-width", "none", "important");
     }
 
-    if (isNarrowingPoint) break;
-    cur = parent;
-    depth++;
+    restorers.push(() => {
+      el.style.setProperty("width", prev, prevPrio);
+      el.style.setProperty("max-width", prevMax, prevMaxPrio);
+      el.style.setProperty("padding-left", prevPL, prevPLPrio);
+      el.style.setProperty("padding-right", prevPR, prevPRPrio);
+      el.style.setProperty("box-sizing", prevBS, prevBSPrio);
+    });
   }
 
   // Force a synchronous reflow so the new widths are committed before any
