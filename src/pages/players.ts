@@ -52,8 +52,17 @@ function ensureTableFits(table: HTMLTableElement): () => void {
   let cur: HTMLElement | null = table.parentElement;
   let depth = 0;
   const MAX_DEPTH = 14;
-  const WIDER_BY = 1.2;
-  const BREATHING_ROOM_PX = 200; // per side, total = 400px less than parent width
+  // Parent must be at least 1.1x wider than child to count as the narrowing
+  // point. Was 1.2 but narrow viewports (~1536px) only produce a ~1.16x
+  // ratio at Yahoo's .Page level, which made detection miss entirely.
+  const WIDER_BY = 1.1;
+  // Viewport-scaled margins: full size on wide monitors, auto-shrinks on
+  // narrow ones so the table never clips and never goes edge-to-edge.
+  // Computed in JS (rather than CSS min()) for predictable inline-style
+  // behavior across all Chromium versions.
+  const vw = window.innerWidth;
+  const leftPx = Math.round(Math.min(200, vw * 0.08));
+  const rightPx = Math.round(Math.min(250, vw * 0.10));
   const ULTRA_WIDE_CAP_PX = 2400; // sensible max on very wide monitors
   while (cur && cur !== document.body && cur !== document.documentElement && depth < MAX_DEPTH) {
     const parent = cur.parentElement;
@@ -74,12 +83,23 @@ function ensureTableFits(table: HTMLTableElement): () => void {
       const prevMLPrio = el.style.getPropertyPriority("margin-left");
       const prevMR = el.style.getPropertyValue("margin-right");
       const prevMRPrio = el.style.getPropertyPriority("margin-right");
+      const prevPL = el.style.getPropertyValue("padding-left");
+      const prevPLPrio = el.style.getPropertyPriority("padding-left");
+      const prevPR = el.style.getPropertyValue("padding-right");
+      const prevPRPrio = el.style.getPropertyPriority("padding-right");
+      const prevBS = el.style.getPropertyValue("box-sizing");
+      const prevBSPrio = el.style.getPropertyPriority("box-sizing");
 
       if (isNarrowingPoint) {
-        el.style.setProperty("width", `calc(100% - ${BREATHING_ROOM_PX * 2}px)`, "important");
+        // Use padding (not margin) so breathing room renders regardless of
+        // the containing block's layout mode (flex/grid/absolute can ignore
+        // margins). box-sizing: border-box keeps the element's outer width
+        // at 100% of its parent while padding pushes content inward.
+        el.style.setProperty("width", "100%", "important");
         el.style.setProperty("max-width", `${ULTRA_WIDE_CAP_PX}px`, "important");
-        el.style.setProperty("margin-left", "auto", "important");
-        el.style.setProperty("margin-right", "auto", "important");
+        el.style.setProperty("box-sizing", "border-box", "important");
+        el.style.setProperty("padding-left", `${leftPx}px`, "important");
+        el.style.setProperty("padding-right", `${rightPx}px`, "important");
       } else {
         el.style.setProperty("width", "100%", "important");
         el.style.setProperty("max-width", "none", "important");
@@ -90,6 +110,9 @@ function ensureTableFits(table: HTMLTableElement): () => void {
         el.style.setProperty("max-width", prevMax, prevMaxPrio);
         el.style.setProperty("margin-left", prevML, prevMLPrio);
         el.style.setProperty("margin-right", prevMR, prevMRPrio);
+        el.style.setProperty("padding-left", prevPL, prevPLPrio);
+        el.style.setProperty("padding-right", prevPR, prevPRPrio);
+        el.style.setProperty("box-sizing", prevBS, prevBSPrio);
       });
     }
 
