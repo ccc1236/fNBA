@@ -43,41 +43,57 @@ async function send<T>(req: unknown): Promise<T> {
 function ensureTableFits(table: HTMLTableElement): () => void {
   const restorers: Array<() => void> = [];
 
-  // Walk up the ancestor chain. Widen each level with a fixed pixel width
-  // using !important (to beat Yahoo's stylesheet specificity). Stop AT the
-  // narrowing point so we don't expand Yahoo's outer chrome (the branding
-  // bar, top nav, footer) into the viewport edges. The narrowing point is
-  // the first level whose parent is significantly wider; widening past it
-  // would push our changes into containers that are intentionally narrow.
+  // Walk up the ancestor chain. Widen every level with a fixed pixel width
+  // (using !important to beat Yahoo's stylesheet specificity) so the chain
+  // can grow with the table. The OUTERMOST widened level (the "narrowing
+  // point") gets breathing-room margins and an ultra-wide cap, so the page
+  // doesn't go edge-to-edge on a 4K monitor. Stop at the narrowing point
+  // so Yahoo's outer chrome (branding, top nav, footer) keeps its layout.
   let cur: HTMLElement | null = table.parentElement;
   let depth = 0;
   const MAX_DEPTH = 14;
   const WIDER_BY = 1.2;
+  const BREATHING_ROOM_PX = 40; // per side, total = 80px less than parent width
+  const ULTRA_WIDE_CAP_PX = 2400; // sensible max on very wide monitors
   while (cur && cur !== document.body && cur !== document.documentElement && depth < MAX_DEPTH) {
     const parent = cur.parentElement;
     if (!parent) break;
     const cs = getComputedStyle(cur);
     const w = cs.width;
+    const wNum = parseFloat(w);
+    const pwNum = parseFloat(getComputedStyle(parent).width);
+    const isNarrowingPoint = pwNum > 0 && pwNum > wNum * WIDER_BY;
+
     if (w && w.endsWith("px") && w !== "0px") {
       const el = cur;
       const prev = el.style.getPropertyValue("width");
       const prevPrio = el.style.getPropertyPriority("width");
       const prevMax = el.style.getPropertyValue("max-width");
       const prevMaxPrio = el.style.getPropertyPriority("max-width");
-      el.style.setProperty("width", "100%", "important");
-      el.style.setProperty("max-width", "none", "important");
+      const prevML = el.style.getPropertyValue("margin-left");
+      const prevMLPrio = el.style.getPropertyPriority("margin-left");
+      const prevMR = el.style.getPropertyValue("margin-right");
+      const prevMRPrio = el.style.getPropertyPriority("margin-right");
+
+      if (isNarrowingPoint) {
+        el.style.setProperty("width", `calc(100% - ${BREATHING_ROOM_PX * 2}px)`, "important");
+        el.style.setProperty("max-width", `${ULTRA_WIDE_CAP_PX}px`, "important");
+        el.style.setProperty("margin-left", "auto", "important");
+        el.style.setProperty("margin-right", "auto", "important");
+      } else {
+        el.style.setProperty("width", "100%", "important");
+        el.style.setProperty("max-width", "none", "important");
+      }
+
       restorers.push(() => {
         el.style.setProperty("width", prev, prevPrio);
         el.style.setProperty("max-width", prevMax, prevMaxPrio);
+        el.style.setProperty("margin-left", prevML, prevMLPrio);
+        el.style.setProperty("margin-right", prevMR, prevMRPrio);
       });
     }
-    // Stop AFTER widening the narrowing-point level. Beyond this point lies
-    // the page chrome (header, footer, body) which should keep its layout.
-    const wNum = parseFloat(w);
-    const pwNum = parseFloat(getComputedStyle(parent).width);
-    if (pwNum > 0 && pwNum > wNum * WIDER_BY) {
-      break;
-    }
+
+    if (isNarrowingPoint) break;
     cur = parent;
     depth++;
   }
