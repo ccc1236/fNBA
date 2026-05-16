@@ -136,6 +136,70 @@ function applyYahooFilterFade(table: HTMLTableElement): () => void {
   return () => restorers.forEach((r) => r());
 }
 
+interface SortInfo {
+  columnIndex: number;
+  direction: "asc" | "desc";
+}
+
+function cellNumeric(row: HTMLTableRowElement, idx: number): number | null {
+  const cell = row.children[idx] as HTMLElement | undefined;
+  if (!cell) return null;
+  const text = (cell.textContent ?? "").trim();
+  if (!text || text === "-") return null;
+  const num = parseFloat(text);
+  return Number.isFinite(num) ? num : null;
+}
+
+/**
+ * Yahoo's sort is server-side (clicking a header navigates to ?sort=...). When
+ * we override stat cell values client-side, Yahoo's last-applied sort goes
+ * stale: the values change but row order doesn't. Detect the active-sort
+ * column (it carries `Selected` class) and the current direction (inferred by
+ * walking adjacent values pre-override) so we can resort after.
+ */
+function detectActiveSort(table: HTMLTableElement): SortInfo | null {
+  const headRows = table.querySelectorAll("thead tr");
+  const labelRow = headRows.length > 0 ? headRows[headRows.length - 1]! : null;
+  if (!labelRow) return null;
+  const headers = Array.from(labelRow.children);
+  const columnIndex = headers.findIndex((h) => h.classList?.contains("Selected"));
+  if (columnIndex < 0) return null;
+
+  const tbody = table.querySelector("tbody");
+  if (!tbody) return null;
+  const rows = Array.from(tbody.querySelectorAll<HTMLTableRowElement>("tr"));
+  const values = rows.map((r) => cellNumeric(r, columnIndex)).filter((v): v is number => v !== null);
+  if (values.length < 2) return null;
+
+  let asc = 0;
+  let desc = 0;
+  for (let i = 0; i < values.length - 1; i++) {
+    const a = values[i]!;
+    const b = values[i + 1]!;
+    if (a < b) asc++;
+    else if (a > b) desc++;
+  }
+  return { columnIndex, direction: desc >= asc ? "desc" : "asc" };
+}
+
+function reSortBy(table: HTMLTableElement, sort: SortInfo): void {
+  const tbody = table.querySelector("tbody");
+  if (!tbody) return;
+  const rows = Array.from(tbody.querySelectorAll<HTMLTableRowElement>("tr"));
+  if (rows.length < 2) return;
+
+  rows.sort((a, b) => {
+    const va = cellNumeric(a, sort.columnIndex);
+    const vb = cellNumeric(b, sort.columnIndex);
+    if (va === null && vb === null) return 0;
+    if (va === null) return 1;
+    if (vb === null) return -1;
+    return sort.direction === "desc" ? vb - va : va - vb;
+  });
+
+  for (const r of rows) tbody.appendChild(r);
+}
+
 async function paint(table: HTMLTableElement, bar: FilterBarHandle, settings: FilterSettings): Promise<void> {
   bar.setStatus("Loading...");
   const players = scrapePlayers();
@@ -144,6 +208,9 @@ async function paint(table: HTMLTableElement, bar: FilterBarHandle, settings: Fi
     return;
   }
   const season = currentSeasonString();
+
+  // Capture sort state BEFORE override; direction is inferred from current order.
+  const sortInfo = detectActiveSort(table);
 
   const bootReq: BootstrapPlayersRequest = { type: "bootstrapPlayers", season, players };
   await send<BootstrapPlayersResponse | ErrorResponse>(bootReq);
@@ -161,6 +228,7 @@ async function paint(table: HTMLTableElement, bar: FilterBarHandle, settings: Fi
     return;
   }
   renderColumns(table, resp.byYahooId);
+  if (sortInfo) reSortBy(table, sortInfo);
   bar.setStatus(`Updated ${new Date().toLocaleTimeString()}`);
 }
 
@@ -196,6 +264,7 @@ export async function run(_info: PageInfo): Promise<{ teardown: () => void }> {
     // Force-fresh: same flow with forceFresh hint passed down. The simplest
     // path is to do a getPlayerStats with forceFresh=true.
     bar.setStatus("Refreshing...");
+    const sortInfo = detectActiveSort(table);
     const yahooIds = scrapePlayers().map((p) => p.yahooId);
     const r = await send<GetPlayerStatsResponse | ErrorResponse>({
       type: "getPlayerStats",
@@ -209,6 +278,7 @@ export async function run(_info: PageInfo): Promise<{ teardown: () => void }> {
       return;
     }
     renderColumns(table, r.byYahooId);
+    if (sortInfo) reSortBy(table, sortInfo);
     bar.setStatus(`Updated ${new Date().toLocaleTimeString()}`);
   };
 
