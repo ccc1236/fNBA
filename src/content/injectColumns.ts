@@ -70,7 +70,7 @@ export function renderColumns(
     groupTh.dataset.fnba = "group";
     groupTh.colSpan = ADVANCED_COLUMNS.length;
     groupTh.textContent = GROUP_HEADER_LABEL;
-    groupTh.style.textAlign = "end";
+    groupTh.style.textAlign = "center";
     insertBeforeSpacerOrAppend(groupRow, groupTh);
   }
 

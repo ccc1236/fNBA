@@ -53,7 +53,7 @@ function ensureTableFits(table: HTMLTableElement): () => void {
   let depth = 0;
   const MAX_DEPTH = 14;
   const WIDER_BY = 1.2;
-  const BREATHING_ROOM_PX = 40; // per side, total = 80px less than parent width
+  const BREATHING_ROOM_PX = 150; // per side, total = 300px less than parent width
   const ULTRA_WIDE_CAP_PX = 2400; // sensible max on very wide monitors
   while (cur && cur !== document.body && cur !== document.documentElement && depth < MAX_DEPTH) {
     const parent = cur.parentElement;
