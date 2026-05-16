@@ -31,25 +31,40 @@ async function send<T>(req: unknown): Promise<T> {
  * clear `max-width` on each level so the table can claim the available
  * horizontal space. Restored on teardown.
  */
+/**
+ * Yahoo Fantasy puts the stats table inside a narrow main-content column
+ * (typically ~1300px) while reserving room for a right rail. With our three
+ * extra columns the table doesn't fit. The whole rail column is the same
+ * pixel width all the way down to the table's parent; the narrowing happens
+ * at one single ancestor (Yahoo's `.Page` div). We find that narrowing
+ * point and widen it to 100% of its own parent so the rest of the chain
+ * cascades. Restored on teardown.
+ */
 function ensureTableFits(table: HTMLTableElement): () => void {
   const restorers: Array<() => void> = [];
   let cur: HTMLElement | null = table.parentElement;
   let depth = 0;
-  const MAX_DEPTH = 8;
+  const MAX_DEPTH = 12;
+  const WIDER_BY = 1.2;
   while (cur && cur !== document.body && cur !== document.documentElement && depth < MAX_DEPTH) {
-    const cs = getComputedStyle(cur);
-    const mw = cs.maxWidth;
-    // Touch only ancestors that actually have a pixel/em/rem max-width
-    // constraint. Skip percentage-based or `none`.
-    if (mw && mw !== "none" && !mw.endsWith("%")) {
+    const parent = cur.parentElement;
+    if (!parent) break;
+    const w = parseFloat(getComputedStyle(cur).width);
+    const pw = parseFloat(getComputedStyle(parent).width);
+    if (pw > 0 && pw > w * WIDER_BY) {
+      // Narrowing point reached. Widen cur to fill its parent.
+      const prevWidth = cur.style.width;
       const prevMaxWidth = cur.style.maxWidth;
       const el = cur;
+      el.style.width = "100%";
       el.style.maxWidth = "none";
       restorers.push(() => {
+        el.style.width = prevWidth;
         el.style.maxWidth = prevMaxWidth;
       });
+      break;
     }
-    cur = cur.parentElement;
+    cur = parent;
     depth++;
   }
   return () => restorers.forEach((r) => r());
