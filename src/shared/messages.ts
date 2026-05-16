@@ -1,5 +1,6 @@
 import type { PerModeKey, PlayerStatRow, SeasonString, WindowKey, YahooPlayerId } from "./types.js";
 import type { YahooPlayer } from "../background/playerMapping.js";
+import type { FilterSettings } from "./settings.js";
 
 export const WINDOW_KEYS: readonly WindowKey[] = ["Season", "Last5", "Last10"];
 export const PER_MODE_KEYS: readonly PerModeKey[] = ["PerGame", "Per36", "Per100Possessions"];
@@ -70,4 +71,32 @@ export function isBootstrapPlayersRequest(v: unknown): v is BootstrapPlayersRequ
     if (typeof p.team !== "string") return false;
   }
   return true;
+}
+
+// Settings-relay messages: content scripts in some Chrome MV3 builds do not
+// see `chrome.storage` directly. The SW handles storage on their behalf.
+export interface GetSettingsRequest {
+  type: "getSettings";
+}
+export interface GetSettingsResponse {
+  type: "getSettingsResponse";
+  settings: FilterSettings;
+}
+export interface SaveSettingsRequest {
+  type: "saveSettings";
+  patch: Partial<FilterSettings>;
+}
+export interface SaveSettingsResponse {
+  type: "saveSettingsResponse";
+}
+
+export function isGetSettingsRequest(v: unknown): v is GetSettingsRequest {
+  return isObject(v) && v.type === "getSettings";
+}
+
+export function isSaveSettingsRequest(v: unknown): v is SaveSettingsRequest {
+  if (!isObject(v)) return false;
+  if (v.type !== "saveSettings") return false;
+  if (v.patch === undefined) return true;
+  return isObject(v.patch);
 }

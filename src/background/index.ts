@@ -9,13 +9,19 @@ import { ADVANCED_COLUMNS, BASE_OVERRIDE_COLUMNS } from "../shared/columns.js";
 import {
   isGetPlayerStatsRequest,
   isBootstrapPlayersRequest,
+  isGetSettingsRequest,
+  isSaveSettingsRequest,
   type BootstrapPlayersRequest,
   type BootstrapPlayersResponse,
   type ErrorResponse,
   type GetPlayerStatsRequest,
   type GetPlayerStatsResponse,
+  type GetSettingsResponse,
   type MessageResponse as MsgResponse,
+  type SaveSettingsRequest,
+  type SaveSettingsResponse,
 } from "../shared/messages.js";
+import { loadSettings, saveSettings } from "../shared/settings.js";
 import type { PlayerStatRow, YahooPlayerId } from "../shared/types.js";
 import { log } from "../shared/logger.js";
 
@@ -110,6 +116,28 @@ async function handleBootstrapPlayers(
   }
 }
 
+async function handleGetSettings(): Promise<GetSettingsResponse | ErrorResponse> {
+  try {
+    const settings = await loadSettings();
+    return { type: "getSettingsResponse", settings };
+  } catch (e) {
+    log.error("handleGetSettings", e);
+    return { type: "error", code: "UNKNOWN", message: String(e) };
+  }
+}
+
+async function handleSaveSettings(
+  req: SaveSettingsRequest,
+): Promise<SaveSettingsResponse | ErrorResponse> {
+  try {
+    await saveSettings(req.patch ?? {});
+    return { type: "saveSettingsResponse" };
+  } catch (e) {
+    log.error("handleSaveSettings", e);
+    return { type: "error", code: "UNKNOWN", message: String(e) };
+  }
+}
+
 // Eagerly open the cache so first request is fast.
 void cache.open();
 
@@ -134,6 +162,14 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   }
   if (isBootstrapPlayersRequest(msg)) {
     void handleBootstrapPlayers(msg).then(sendResponse);
+    return true; // async response
+  }
+  if (isGetSettingsRequest(msg)) {
+    void handleGetSettings().then(sendResponse);
+    return true; // async response
+  }
+  if (isSaveSettingsRequest(msg)) {
+    void handleSaveSettings(msg).then(sendResponse);
     return true; // async response
   }
   sendResponse({ type: "error", code: "BAD_REQUEST", message: "unknown message" });
