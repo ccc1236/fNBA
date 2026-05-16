@@ -23,6 +23,25 @@ async function send<T>(req: unknown): Promise<T> {
   return (await chrome.runtime.sendMessage(req)) as T;
 }
 
+/**
+ * Yahoo's stats table extends past the viewport once we append three new
+ * columns. Setting overflow-x: auto on the table's parent lets the user
+ * scroll the table horizontally inside the page rather than seeing columns
+ * cut off at the page edge. Restored on teardown.
+ */
+function ensureTableScrolls(table: HTMLTableElement): () => void {
+  const parent = table.parentElement;
+  if (!parent) return () => {};
+  const prevOverflowX = parent.style.overflowX;
+  const prevMaxWidth = parent.style.maxWidth;
+  parent.style.overflowX = "auto";
+  parent.style.maxWidth = "100%";
+  return () => {
+    parent.style.overflowX = prevOverflowX;
+    parent.style.maxWidth = prevMaxWidth;
+  };
+}
+
 function applyYahooFilterFade(table: HTMLTableElement): () => void {
   // Yahoo's native stat-range selector typically sits in a form labeled
   // "Stats Range" or contains a select with options like "Season" / "Last 14".
@@ -95,6 +114,7 @@ export async function run(_info: PageInfo): Promise<{ teardown: () => void }> {
 
   let settings = bar.getSettings();
 
+  const restoreScroll = ensureTableScrolls(table);
   const restoreYahoo = applyYahooFilterFade(table);
 
   await paint(table, bar, settings);
@@ -130,6 +150,7 @@ export async function run(_info: PageInfo): Promise<{ teardown: () => void }> {
   return {
     teardown: () => {
       restoreYahoo();
+      restoreScroll();
       bar.removeEventListener("fnba-filter-change", onChange);
       bar.removeEventListener("fnba-filter-refresh", onRefresh);
       clearFnbaCells(table);
