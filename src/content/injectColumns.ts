@@ -70,6 +70,7 @@ export function renderColumns(
     groupTh.dataset.fnba = "group";
     groupTh.colSpan = ADVANCED_COLUMNS.length;
     groupTh.textContent = GROUP_HEADER_LABEL;
+    groupTh.style.textAlign = "end";
     insertBeforeSpacerOrAppend(groupRow, groupTh);
   }
 
@@ -80,6 +81,7 @@ export function renderColumns(
       const th = document.createElement("th");
       th.dataset.fnba = col.key;
       th.textContent = col.label;
+      th.style.textAlign = "end";
       insertBeforeSpacerOrAppend(labelRow, th);
     }
   }
@@ -94,6 +96,7 @@ export function renderColumns(
       const td = document.createElement("td");
       td.dataset.fnba = col.key;
       td.textContent = formatStat(stats?.[col.key] ?? null, col.decimals, col.multiplier);
+      td.style.textAlign = "end";
       insertBeforeSpacerOrAppend(row, td);
     }
 
