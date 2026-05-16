@@ -5,7 +5,8 @@ import type { PlayerStatRow } from "../../src/shared/types.js";
 const SAMPLE: Record<string, PlayerStatRow | null> = {
   "6014": {
     nbaId: 1629029, name: "Luka", teamAbbr: "LAL", position: null,
-    stats: { PTS: 33.5, REB: 7.7, AST: 8.3, EFG_PCT: 0.563, TS_PCT: 0.617, USG_PCT: 36.8 },
+    // USG_PCT comes from nba.com as a fraction; column config multiplies by 100 for display.
+    stats: { PTS: 33.5, REB: 7.7, AST: 8.3, EFG_PCT: 0.563, TS_PCT: 0.617, USG_PCT: 0.368 },
   },
   "404": null,
 };

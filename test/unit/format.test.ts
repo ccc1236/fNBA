@@ -18,4 +18,9 @@ describe("formatStat", () => {
     expect(formatStat(null, 1)).toBe("-");
     expect(formatStat(undefined, 1)).toBe("-");
   });
+  it("applies a multiplier before formatting (USG_PCT: 0.368 -> 36.8)", () => {
+    expect(formatStat(0.368, 1, 100)).toBe("36.8");
+    expect(formatStat(0.296, 1, 100)).toBe("29.6");
+    expect(formatStat(null, 1, 100)).toBe("-");
+  });
 });

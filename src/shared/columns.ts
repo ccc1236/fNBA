@@ -9,6 +9,10 @@ export interface ColumnDef {
   source: MeasureType;
   /** number of decimal places for display */
   decimals: number;
+  /** Optional multiplier applied before display. nba.com returns most
+   *  percentage stats as fractions (e.g. USG_PCT = 0.368). For columns
+   *  conventionally shown as "36.8" rather than ".368", set multiplier: 100. */
+  multiplier?: number;
   /** Yahoo's displayed column header (used by the override layer to locate
    *  the cell in Yahoo's table). Only meaningful for source: "Base" rows. */
   yahooHeader?: string;
@@ -17,7 +21,7 @@ export interface ColumnDef {
 export const ADVANCED_COLUMNS: ColumnDef[] = [
   { key: "EFG_PCT", label: "eFG%", source: "Advanced", decimals: 3 },
   { key: "TS_PCT", label: "TS%", source: "Advanced", decimals: 3 },
-  { key: "USG_PCT", label: "USG%", source: "Advanced", decimals: 1 },
+  { key: "USG_PCT", label: "USG%", source: "Advanced", decimals: 1, multiplier: 100 },
 ];
 
 export const BASE_OVERRIDE_COLUMNS: ColumnDef[] = [

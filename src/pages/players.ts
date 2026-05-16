@@ -24,22 +24,35 @@ async function send<T>(req: unknown): Promise<T> {
 }
 
 /**
- * Yahoo's stats table extends past the viewport once we append three new
- * columns. Setting overflow-x: auto on the table's parent lets the user
- * scroll the table horizontally inside the page rather than seeing columns
- * cut off at the page edge. Restored on teardown.
+ * Yahoo wraps its stats table in a max-width-constrained content container,
+ * which leaves wide unused margins on both sides of the page. After we append
+ * three new columns the table no longer fits inside that constraint. Rather
+ * than introducing a horizontal scrollbar, walk up the ancestor chain and
+ * clear `max-width` on each level so the table can claim the available
+ * horizontal space. Restored on teardown.
  */
-function ensureTableScrolls(table: HTMLTableElement): () => void {
-  const parent = table.parentElement;
-  if (!parent) return () => {};
-  const prevOverflowX = parent.style.overflowX;
-  const prevMaxWidth = parent.style.maxWidth;
-  parent.style.overflowX = "auto";
-  parent.style.maxWidth = "100%";
-  return () => {
-    parent.style.overflowX = prevOverflowX;
-    parent.style.maxWidth = prevMaxWidth;
-  };
+function ensureTableFits(table: HTMLTableElement): () => void {
+  const restorers: Array<() => void> = [];
+  let cur: HTMLElement | null = table.parentElement;
+  let depth = 0;
+  const MAX_DEPTH = 8;
+  while (cur && cur !== document.body && cur !== document.documentElement && depth < MAX_DEPTH) {
+    const cs = getComputedStyle(cur);
+    const mw = cs.maxWidth;
+    // Touch only ancestors that actually have a pixel/em/rem max-width
+    // constraint. Skip percentage-based or `none`.
+    if (mw && mw !== "none" && !mw.endsWith("%")) {
+      const prevMaxWidth = cur.style.maxWidth;
+      const el = cur;
+      el.style.maxWidth = "none";
+      restorers.push(() => {
+        el.style.maxWidth = prevMaxWidth;
+      });
+    }
+    cur = cur.parentElement;
+    depth++;
+  }
+  return () => restorers.forEach((r) => r());
 }
 
 function applyYahooFilterFade(table: HTMLTableElement): () => void {
@@ -114,7 +127,7 @@ export async function run(_info: PageInfo): Promise<{ teardown: () => void }> {
 
   let settings = bar.getSettings();
 
-  const restoreScroll = ensureTableScrolls(table);
+  const restoreScroll = ensureTableFits(table);
   const restoreYahoo = applyYahooFilterFade(table);
 
   await paint(table, bar, settings);

@@ -56,7 +56,7 @@ export function renderColumns(
     for (const col of ADVANCED_COLUMNS) {
       const td = document.createElement("td");
       td.dataset.fnba = col.key;
-      td.textContent = formatStat(stats?.[col.key] ?? null, col.decimals);
+      td.textContent = formatStat(stats?.[col.key] ?? null, col.decimals, col.multiplier);
       row.appendChild(td);
     }
 
@@ -72,7 +72,7 @@ export function renderColumns(
         // Yahoo wraps cell content in a `<div>`; target it so we don't clobber the wrapper.
         const inner = cell.querySelector("div");
         const target = inner ?? cell;
-        target.textContent = formatStat(stats[col.key] ?? null, col.decimals);
+        target.textContent = formatStat(stats[col.key] ?? null, col.decimals, col.multiplier);
         cell.dataset.fnbaOverride = "1";
       }
     }
