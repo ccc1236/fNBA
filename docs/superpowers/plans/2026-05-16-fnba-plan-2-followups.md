@@ -1,37 +1,50 @@
 # fNBA Plan 2 - Follow-ups
 
-Captured 2026-05-16 at the end of the live-smoke session. Plan 2's implementation (Batches A-G) plus all interactive smoke fixes are committed on branch `plan-2-content-overlay`. The Players page works end-to-end. The items below are known limitations and deferred polish.
+Captured 2026-05-16 at the end of the live-smoke session. Updated 2026-05-17 after the My Team smoke and v0.0.3 / v0.0.4 patch ships.
 
-## State at pause
+## State at pause (2026-05-17)
 
-- Branch `plan-2-content-overlay`, HEAD `8e5d5f0` ("re-sort tbody by the active-sort column")
-- Main is still at `v0.0.1`
-- `npm test` shows 75 passing
+- Branch `main`, HEAD is the `v0.0.4` tag
+- Releases shipped: `v0.0.1` (foundation), `v0.0.2` (content overlay), `v0.0.3` (viewport-scaled breathing room), `v0.0.4` (My Team page support + two-pass layout)
+- `npm test`: 76 passing (one new test for numeric My Team URL detection)
 - `npm run typecheck`, `npm run build` clean
 
-## Confirmed working on live Yahoo (Players page)
+## Confirmed working on live Yahoo (Players page and My Team page)
 
+### Players page
 - Filter bar mounts above the stats table with Window / Per-mode / Refresh / status
 - Three new columns (eFG%, TS%, USG%) appended under a centered "Advanced" group header
 - Yahoo's traditional stats (PTS, REB, AST, ST, BLK, 3PTM, FG%, FT%, TO) override with filter-aware values from nba.com
-- L5 / L10 / Season window switching (player's last N appearances, NOT team-scope - semantic confirmed with user)
-- Per Game / Per 36 / Per 100 swap (numeric counting stats react; see open issue below on percentages)
+- L5 / L10 / Season window switching (player's last N appearances, NOT team-scope, semantic confirmed with user)
+- Per Game / Per 36 / Per 100 swap on counting stats
 - Refresh button forces a fresh fetch
-- Mapping bootstrap persists across pages (`fnba.mapping.<season>` in chrome.storage.local)
-- Settings persist via SW relay (chrome.storage.sync isn't reachable from content scripts in this Chrome build)
 - Sorted column updates correctly even when its header carries the sort-arrow PUA glyph
 - Active sort direction preserved across filter changes (rows re-sort)
-- 200 px breathing room on each side, 2400 px ultra-wide cap
 - Right-aligned cells matching Yahoo's `Ta-end` convention
-- No horizontal scrollbar on standard viewports
+- Breathing room scales with viewport: padding at the narrowing-point ancestor, `min(200px, 8vw)` left and `min(250px, 10vw)` right
 
-## Open issues for v0.0.3 (next plan or hotfix batch)
+### My Team page (smoked 2026-05-17)
+- All eight Players-page items above, on the roster table
+- URL pattern `/nba/<leagueId>/<numericTeamId>` now matched correctly
+- Breathing room also correct on My Team (different ancestor structure, ratio 1.16 between .RailResponsive and .Rail; lowered `WIDER_BY` threshold to 1.05 to catch it)
 
-### 1. Combined columns FGM/A and FTM/FTA don't update
+## Resolved this session
+
+### FG% / FT% / 3P% / eFG% / TS% / USG% do not change on Per36 / Per100 (Issue #2 from prior list)
+
+By design. These are scale-invariant ratios; nba.com returns identical numbers regardless of PerMode. The window dimension (Season / L5 / L10) does change them because the game sample changes. Documented in `CLAUDE.md` under "Ratio stats are scale-invariant across PerMode".
+
+### My Team page live smoke (Issue #5 from prior list)
+
+Done. All checks pass.
+
+## Still open
+
+### 1. Combined columns FGM/A and FTM/FTA do not update
 
 Yahoo renders made-and-attempted in a single cell formatted `9.9/17.4`. Our `BASE_OVERRIDE_COLUMNS` has entries for FG% and FT% individually but no "compound" column shape.
 
-**Fix sketch:** add a compound column descriptor to `src/shared/columns.ts`, e.g.
+Fix sketch: add a compound column descriptor to `src/shared/columns.ts`, e.g.
 
 ```ts
 { key: "FGM_FGA", makeKey: "FGM", attemptKey: "FGA", source: "Base",
@@ -40,23 +53,19 @@ Yahoo renders made-and-attempted in a single cell formatted `9.9/17.4`. Our `BAS
 
 Or skip the columns explicitly (leave at Yahoo's values, document in spec).
 
-### 2. FG% and FT% don't change on Per36 / Per100 swap
+### 2. Yahoo native stat-range filter de-emphasis (verification pending)
 
-Probably correct. Shooting percentages are scale-invariant by definition (made / attempted is the same whether per game or per 36). nba.com's `leaguedashplayerstats` returns identical FG_PCT for all `PerMode` values, so our override writes the same number twice.
+`applyYahooFilterFade` in `src/pages/players.ts` looks for a `<select>` with options matching `/season|last\s*\d/i`. The Stats dropdown on the live page shows "Season (avg)"; the heuristic may not match. Quick visual check on the live page is enough: look for the `(fNBA active)` purple note next to Yahoo's own stats-range dropdown, and that dropdown should be semi-transparent + non-interactive. If it is not, widen the regex.
 
-**Action:** verify the API does return identical values, then close as "by design". If desired, add a small note/tooltip in the filter bar explaining that shooting percentages don't vary with per-mode.
+### 3. Sortable injected columns (deferred indefinitely)
 
-### 3. Yahoo native stat-range filter de-emphasis unverified
+eFG%, TS%, USG% have no click handler. User decided this isn't important right now; can revisit when a real use case appears. Design notes if/when we come back:
 
-`applyYahooFilterFade` in `src/pages/players.ts` looks for a `<select>` with options matching `/season|last\s*\d/i`. The Stats dropdown on the live page shows "Season (avg)"; the heuristic may not match. Verify on the live DOM, adjust the option-text regex if needed.
-
-### 4. Sortable injected columns
-
-eFG%, TS%, USG% have no click handler. Yahoo's native sort triggers a full page navigation, so we cannot reuse it. Plan: attach a click handler that calls the same `reSortBy(table, {columnIndex, direction})` we already use after filter changes. Toggle direction on repeat click; clear other columns' "Selected" class if practical.
-
-### 5. My Team page not smoke-tested on live Yahoo
-
-The DOM scraper and page module passed against the saved fixture (`test/fixtures/yahoo/myTeam.html`). Live verification still pending. The My Team page may have starters / bench split rows and a different filter widget; check that the scraper picks up the correct stats table (the one with the most player anchors) and that overrides target the right cells.
+- Two-state cycle: first click desc, second click asc, repeat
+- Visual: small arrow next to active header
+- Persist sort across filter changes by capturing direction before `clearFnbaCells` and re-applying after re-render
+- Null/dash values sort to the bottom regardless of direction
+- Out of scope: removing Yahoo's `Selected` class on Yahoo columns when ours is active (cosmetic)
 
 ## Bigger questions to revisit later
 
@@ -69,9 +78,8 @@ The DOM scraper and page module passed against the saved fixture (`test/fixtures
 
 ## Recommended next session bootstrap
 
-1. Read `CLAUDE.md` (now contains every Yahoo gotcha we've discovered).
+1. Read `CLAUDE.md` (every Yahoo and Chrome MV3 gotcha we have hit).
 2. Read this file.
-3. Read the original Plan 2 doc plus its "Post-fixture revisions" addendum.
-4. Pick from the open issues. Issue 1 (combined columns) is the most user-visible and a good warm-up; Issue 4 (sortable injected columns) is the most natural extension of the current sort logic.
+3. Pick the next item. Issue #1 (combined FGM/A and FTM/FTA columns) is the most user-visible remaining gap.
 
-When work resumes, the standard cycle still applies: brainstorming for any design-level item, then writing-plans for a fresh plan, then subagent-driven-development to execute.
+When work resumes on a real design-level change, run the standard brainstorming -> writing-plans -> subagent-driven-development cycle.
