@@ -102,6 +102,30 @@ describe("renderColumns", () => {
     expect(t.querySelector('th[data-fnba="group"]')).toBeNull();
   });
 
+  it("overrides the sorted column even when its header contains an icon-font sort-arrow glyph", () => {
+    // Yahoo decorates the active-sort header with a Private-Use-Area glyph
+    // (e.g., "PTS"). buildHeaderIndex must strip PUA chars so the
+    // override layer still maps yahooHeader="PTS" to the right column.
+    document.body.innerHTML = `
+      <table>
+        <thead>
+          <tr>
+            <th>Players</th>
+            <th>PTS<span class="arrow"></span></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td><a data-ys-playerid="6014" title="Luka">Luka</a></td><td><div>99.9</div></td></tr>
+        </tbody>
+      </table>`;
+    const t = document.querySelector("table")!;
+    renderColumns(t, SAMPLE);
+    const lukaRow = t.querySelector('tr:has(a[data-ys-playerid="6014"])')!;
+    const ptsCell = lukaRow.children[1] as HTMLElement;
+    expect(ptsCell.textContent).toContain("33.5");
+    expect(ptsCell.hasAttribute("data-fnba-override")).toBe(true);
+  });
+
   it("inserts adv cells before a trailing spacer column", () => {
     document.body.innerHTML = `
       <table>

@@ -29,8 +29,12 @@ function insertBeforeSpacerOrAppend(row: Element, cell: Element): void {
 
 /**
  * Build label-to-column-index map from the LAST `<thead>` row. Yahoo wraps
- * headers as `<th><div><a>PTS</a></div></th>`; we use textContent and strip
- * a trailing `*` (projected-stat decoration like `GP*`, `FTA*`).
+ * headers as `<th><div><a>PTS</a></div></th>`. We strip:
+ *   - Private-Use-Area Unicode (U+E000-U+F8FF), where Yahoo's icon font
+ *     renders the active-sort arrow glyph (e.g., `PTS`). Without this,
+ *     the currently-sorted column maps to a key that no consumer expects,
+ *     so the override layer silently skips it.
+ *   - A trailing `*` (projected-stat decoration: `GP*`, `FTA*`).
  */
 function buildHeaderIndex(table: HTMLTableElement): Map<string, number> {
   const rows = table.querySelectorAll("thead tr");
@@ -38,7 +42,11 @@ function buildHeaderIndex(table: HTMLTableElement): Map<string, number> {
   const map = new Map<string, number>();
   if (!labelRow) return map;
   Array.from(labelRow.children).forEach((cell, i) => {
-    const text = (cell.textContent ?? "").trim().replace(/\*+$/, "").trim();
+    const text = (cell.textContent ?? "")
+      .replace(/[-]/g, "")
+      .trim()
+      .replace(/\*+$/, "")
+      .trim();
     if (text) map.set(text, i);
   });
   return map;
