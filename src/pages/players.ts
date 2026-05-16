@@ -43,16 +43,19 @@ async function send<T>(req: unknown): Promise<T> {
 function ensureTableFits(table: HTMLTableElement): () => void {
   const restorers: Array<() => void> = [];
 
-  // Walk up the ancestor chain and widen every level that has a fixed
-  // pixel width. Yahoo's main content column is constrained at a single
-  // level (Page-wrap -> Page), but multiple intermediate divs inherit
-  // explicit widths from layout JS; widening only one level can be
-  // overridden by descendants' own fixed widths. Use !important to win
-  // against Yahoo's stylesheet.
+  // Walk up the ancestor chain. Widen each level with a fixed pixel width
+  // using !important (to beat Yahoo's stylesheet specificity). Stop AT the
+  // narrowing point so we don't expand Yahoo's outer chrome (the branding
+  // bar, top nav, footer) into the viewport edges. The narrowing point is
+  // the first level whose parent is significantly wider; widening past it
+  // would push our changes into containers that are intentionally narrow.
   let cur: HTMLElement | null = table.parentElement;
   let depth = 0;
   const MAX_DEPTH = 14;
+  const WIDER_BY = 1.2;
   while (cur && cur !== document.body && cur !== document.documentElement && depth < MAX_DEPTH) {
+    const parent = cur.parentElement;
+    if (!parent) break;
     const cs = getComputedStyle(cur);
     const w = cs.width;
     if (w && w.endsWith("px") && w !== "0px") {
@@ -68,13 +71,19 @@ function ensureTableFits(table: HTMLTableElement): () => void {
         el.style.setProperty("max-width", prevMax, prevMaxPrio);
       });
     }
-    cur = cur.parentElement;
+    // Stop AFTER widening the narrowing-point level. Beyond this point lies
+    // the page chrome (header, footer, body) which should keep its layout.
+    const wNum = parseFloat(w);
+    const pwNum = parseFloat(getComputedStyle(parent).width);
+    if (pwNum > 0 && pwNum > wNum * WIDER_BY) {
+      break;
+    }
+    cur = parent;
     depth++;
   }
 
   // Force a synchronous reflow so the new widths are committed before any
-  // subsequent layout-dependent work. Reading offsetWidth is the standard
-  // trick.
+  // subsequent layout-dependent work.
   void document.body.offsetWidth;
 
   return () => restorers.forEach((r) => r());
