@@ -46,7 +46,7 @@ describe("players page module", () => {
 
   it("mounts a filter bar above the stats table", async () => {
     await run({ kind: "players", leagueId: "123456" });
-    expect(document.querySelector("fnba-filter-bar")).not.toBeNull();
+    expect(document.querySelector(".fnba-bar-host")).not.toBeNull();
   });
 
   it("injects three new column headers (eFG%, TS%, USG%)", async () => {

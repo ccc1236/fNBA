@@ -3,8 +3,15 @@ import { PER_MODES } from "../shared/perModes.js";
 import { loadSettings, saveSettings, type FilterSettings } from "../shared/settings.js";
 import type { PerModeKey, WindowKey } from "../shared/types.js";
 
+/**
+ * Filter bar built as a plain `<div>` rather than a custom element. Some Chrome
+ * MV3 content-script contexts have a non-functional `customElements` registry,
+ * which broke the earlier `<fnba-filter-bar>` Web Component approach. Shadow
+ * DOM still works on plain elements, so style isolation is preserved.
+ */
+
 const STYLES = `
-  :host {
+  :host, .fnba-bar-host {
     display: block;
     font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
     color: #1a1a2e;
@@ -48,67 +55,61 @@ const STYLES = `
   }
 `;
 
-export class FilterBar extends HTMLElement {
-  private settings: FilterSettings = { window: "Season", perMode: "PerGame" };
-
-  connectedCallback(): void {
-    const root = this.attachShadow({ mode: "open" });
-    root.innerHTML = `
-      <style>${STYLES}</style>
-      <div class="bar">
-        <span class="brand">fNBA</span>
-        <select data-role="window">
-          ${WINDOWS.map((w) => `<option value="${w.key}">${w.label}</option>`).join("")}
-        </select>
-        <select data-role="perMode">
-          ${PER_MODES.map((m) => `<option value="${m.key}">${m.label}</option>`).join("")}
-        </select>
-        <button data-role="refresh" title="Refetch from nba.com">⟳ Refresh</button>
-        <span class="status" data-role="status"></span>
-      </div>
-    `;
-    void this.init();
-    this.wireEvents();
-  }
-
-  private async init(): Promise<void> {
-    this.settings = await loadSettings();
-    const root = this.shadowRoot!;
-    (root.querySelector('select[data-role="window"]') as HTMLSelectElement).value = this.settings.window;
-    (root.querySelector('select[data-role="perMode"]') as HTMLSelectElement).value = this.settings.perMode;
-  }
-
-  private wireEvents(): void {
-    const root = this.shadowRoot!;
-    const winSel = root.querySelector('select[data-role="window"]') as HTMLSelectElement;
-    const modeSel = root.querySelector('select[data-role="perMode"]') as HTMLSelectElement;
-    const refresh = root.querySelector('button[data-role="refresh"]') as HTMLButtonElement;
-    winSel.addEventListener("change", () => {
-      this.settings = { ...this.settings, window: winSel.value as WindowKey };
-      void saveSettings({ window: this.settings.window });
-      this.dispatchEvent(new CustomEvent("fnba-filter-change", { detail: { ...this.settings } }));
-    });
-    modeSel.addEventListener("change", () => {
-      this.settings = { ...this.settings, perMode: modeSel.value as PerModeKey };
-      void saveSettings({ perMode: this.settings.perMode });
-      this.dispatchEvent(new CustomEvent("fnba-filter-change", { detail: { ...this.settings } }));
-    });
-    refresh.addEventListener("click", () => {
-      this.dispatchEvent(new Event("fnba-filter-refresh"));
-    });
-  }
-
-  getSettings(): FilterSettings {
-    return { ...this.settings };
-  }
-
-  setStatus(text: string, state: "ok" | "error" = "ok"): void {
-    const el = this.shadowRoot!.querySelector('[data-role="status"]') as HTMLElement;
-    el.textContent = text;
-    el.dataset.state = state;
-  }
+export interface FilterBarHandle extends HTMLElement {
+  getSettings(): FilterSettings;
+  setStatus(text: string, state?: "ok" | "error"): void;
 }
 
-if (!customElements.get("fnba-filter-bar")) {
-  customElements.define("fnba-filter-bar", FilterBar);
+/** Build the filter bar element. Async because it loads persisted settings. */
+export async function createFilterBar(): Promise<FilterBarHandle> {
+  const host = document.createElement("div") as unknown as FilterBarHandle;
+  host.classList.add("fnba-bar-host");
+
+  const root = host.attachShadow({ mode: "open" });
+  root.innerHTML = `
+    <style>${STYLES}</style>
+    <div class="bar">
+      <span class="brand">fNBA</span>
+      <select data-role="window">
+        ${WINDOWS.map((w) => `<option value="${w.key}">${w.label}</option>`).join("")}
+      </select>
+      <select data-role="perMode">
+        ${PER_MODES.map((m) => `<option value="${m.key}">${m.label}</option>`).join("")}
+      </select>
+      <button data-role="refresh" title="Refetch from nba.com">⟳ Refresh</button>
+      <span class="status" data-role="status"></span>
+    </div>
+  `;
+
+  let settings: FilterSettings = await loadSettings();
+
+  const winSel = root.querySelector('select[data-role="window"]') as HTMLSelectElement;
+  const modeSel = root.querySelector('select[data-role="perMode"]') as HTMLSelectElement;
+  const refresh = root.querySelector('button[data-role="refresh"]') as HTMLButtonElement;
+  const statusEl = root.querySelector('[data-role="status"]') as HTMLElement;
+
+  winSel.value = settings.window;
+  modeSel.value = settings.perMode;
+
+  winSel.addEventListener("change", () => {
+    settings = { ...settings, window: winSel.value as WindowKey };
+    void saveSettings({ window: settings.window });
+    host.dispatchEvent(new CustomEvent("fnba-filter-change", { detail: { ...settings } }));
+  });
+  modeSel.addEventListener("change", () => {
+    settings = { ...settings, perMode: modeSel.value as PerModeKey };
+    void saveSettings({ perMode: settings.perMode });
+    host.dispatchEvent(new CustomEvent("fnba-filter-change", { detail: { ...settings } }));
+  });
+  refresh.addEventListener("click", () => {
+    host.dispatchEvent(new Event("fnba-filter-refresh"));
+  });
+
+  host.getSettings = (): FilterSettings => ({ ...settings });
+  host.setStatus = (text: string, state: "ok" | "error" = "ok"): void => {
+    statusEl.textContent = text;
+    statusEl.dataset["state"] = state;
+  };
+
+  return host;
 }

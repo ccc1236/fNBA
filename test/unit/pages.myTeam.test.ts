@@ -31,7 +31,7 @@ afterEach(() => { document.body.innerHTML = ""; });
 describe("myTeam page module", () => {
   it("mounts a filter bar and injects columns", async () => {
     await run({ kind: "myTeam", leagueId: "123456" });
-    expect(document.querySelector("fnba-filter-bar")).not.toBeNull();
+    expect(document.querySelector(".fnba-bar-host")).not.toBeNull();
     expect(document.querySelectorAll("th[data-fnba]").length).toBe(3);
   });
 });

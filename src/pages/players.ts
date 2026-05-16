@@ -1,8 +1,6 @@
 import { scrapePlayers, findStatsTable } from "../content/yahoo.js";
 import { renderColumns, clearFnbaCells } from "../content/injectColumns.js";
-import "../ui/filter-bar.js";
-import type { FilterBar } from "../ui/filter-bar.js";
-import { loadSettings } from "../shared/settings.js";
+import { createFilterBar, type FilterBarHandle } from "../ui/filter-bar.js";
 import type { PageInfo } from "../content/pageDetect.js";
 import type {
   BootstrapPlayersRequest,
@@ -56,7 +54,7 @@ function applyYahooFilterFade(table: HTMLTableElement): () => void {
   return () => restorers.forEach((r) => r());
 }
 
-async function paint(table: HTMLTableElement, bar: FilterBar, settings: FilterSettings): Promise<void> {
+async function paint(table: HTMLTableElement, bar: FilterBarHandle, settings: FilterSettings): Promise<void> {
   bar.setStatus("Loading...");
   const players = scrapePlayers();
   if (players.length === 0) {
@@ -91,13 +89,11 @@ export async function run(_info: PageInfo): Promise<{ teardown: () => void }> {
     return { teardown: () => {} };
   }
 
-  // Mount filter bar above the table.
-  const bar = document.createElement("fnba-filter-bar") as FilterBar;
+  // Build and mount the filter bar above the table.
+  const bar = await createFilterBar();
   table.parentElement?.insertBefore(bar, table);
 
-  // Wait for the bar to async-init its settings.
-  await new Promise((r) => setTimeout(r, 0));
-  let settings = await loadSettings();
+  let settings = bar.getSettings();
 
   const restoreYahoo = applyYahooFilterFade(table);
 
