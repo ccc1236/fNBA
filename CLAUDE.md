@@ -96,6 +96,20 @@ The filter bar, cache keys, table columns, and tooltip rows all read from these 
 
 **Yahoo renames CSS classes periodically.** Page detection and element selection inside content scripts must be href-based (`a[href*="/nba/players/"]`), not class-based.
 
+**Yahoo's active-sort header contains a Private-Use-Area Unicode glyph.** When a column is the active sort, its `<th>` includes a `<span class="arrow">` with an icon-font character in U+E000-U+F8FF. Any code that reads header `textContent` for column-name matching must strip PUA characters first (see `buildHeaderIndex` in `src/content/injectColumns.ts`); otherwise the sorted column maps to a name like `"PTS"` that no consumer expects.
+
+**Yahoo's sort is server-side.** Clicking a stat header navigates to `?sort=...&sdir=...`, which triggers a full page reload. Client-side stat overrides update displayed values but do not trigger Yahoo's sort. After our overrides we re-sort the tbody ourselves (`detectActiveSort` + `reSortBy` in `src/pages/players.ts`), preserving the user's chosen direction inferred from the existing row order.
+
+**`chrome.storage` is unavailable to content scripts in some Chrome MV3 builds** even with the `storage` permission granted. The shared `loadSettings`/`saveSettings` helpers detect this at runtime and fall back to `chrome.runtime.sendMessage({type: "getSettings" | "saveSettings"})`. SW-side handlers read/write `chrome.storage.sync` directly. Don't call `chrome.storage` from content scripts; always go through the settings helpers.
+
+**Custom elements (`customElements.define`) are unreliable in content-script isolated worlds.** Build UI as plain `<div>` elements with shadow DOM via a factory function (`createFilterBar` in `src/ui/filter-bar.ts`). Shadow DOM works on any HTMLElement and preserves style isolation.
+
+**Yahoo's main content column is narrower than `Page-wrap` to reserve a right-rail.** The empty rail leaves visible white space. To reclaim it for wider tables, walk up the ancestor chain from the table looking for the "narrowing point" (the first level whose parent is significantly wider) and override its `width` with `!important`. Stop at the narrowing point; widening further pushes Yahoo's header/nav into the viewport edges. See `ensureTableFits` in `src/pages/players.ts`.
+
+**Yahoo stat cells have no `data-stat` attribute.** Find a target stat cell by matching the header row's text against an nba-key-to-Yahoo-label map (`yahooHeader` field on `BASE_OVERRIDE_COLUMNS` in `src/shared/columns.ts`). Yahoo's labels differ from nba.com keys in places: `ST` (not `STL`), `3PTM` (not `3PM`). Header labels also have decoration: a trailing `*` for projected-stat columns (`GP*`, `FTA*`) plus the sort-arrow PUA glyph noted above; strip both before matching.
+
+**Yahoo wraps each stat cell's value in a `<div>`.** Override the inner `<div>`'s `textContent`, not the `<td>`'s. Clobbering the cell directly removes the wrapper and breaks Yahoo's styling.
+
 ## What is and is not in scope
 
 In scope:

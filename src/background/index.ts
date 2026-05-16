@@ -2,16 +2,26 @@ import { Cache } from "./cache.js";
 import { Throttle, ThrottledError } from "./throttle.js";
 import { fetchLeagueDashPlayerStats, RateLimitedError, UpstreamUnavailableError } from "./nbaClient.js";
 import { loadMapping, saveMapping } from "./playerMapping.js";
+import { bootstrapPlayers } from "./mappingService.js";
 import { currentSeason } from "./season.js";
 import { windowByKey } from "../shared/windows.js";
 import { ADVANCED_COLUMNS, BASE_OVERRIDE_COLUMNS } from "../shared/columns.js";
 import {
   isGetPlayerStatsRequest,
+  isBootstrapPlayersRequest,
+  isGetSettingsRequest,
+  isSaveSettingsRequest,
+  type BootstrapPlayersRequest,
+  type BootstrapPlayersResponse,
   type ErrorResponse,
   type GetPlayerStatsRequest,
   type GetPlayerStatsResponse,
+  type GetSettingsResponse,
   type MessageResponse as MsgResponse,
+  type SaveSettingsRequest,
+  type SaveSettingsResponse,
 } from "../shared/messages.js";
+import { loadSettings, saveSettings } from "../shared/settings.js";
 import type { PlayerStatRow, YahooPlayerId } from "../shared/types.js";
 import { log } from "../shared/logger.js";
 
@@ -87,6 +97,47 @@ async function handleGetPlayerStats(req: GetPlayerStatsRequest): Promise<MsgResp
   }
 }
 
+async function handleBootstrapPlayers(
+  req: BootstrapPlayersRequest,
+): Promise<BootstrapPlayersResponse | ErrorResponse> {
+  try {
+    const { added, unmapped } = await bootstrapPlayers(req.season, req.players);
+    return { type: "bootstrapPlayersResponse", added, unmapped };
+  } catch (e) {
+    if (e instanceof RateLimitedError || e instanceof ThrottledError) {
+      throttle.triggerCooldown();
+      return { type: "error", code: "RATE_LIMITED", message: String(e) };
+    }
+    if (e instanceof UpstreamUnavailableError) {
+      return { type: "error", code: "UPSTREAM_UNAVAILABLE", message: String(e) };
+    }
+    log.error("handleBootstrapPlayers", e);
+    return { type: "error", code: "UNKNOWN", message: String(e) };
+  }
+}
+
+async function handleGetSettings(): Promise<GetSettingsResponse | ErrorResponse> {
+  try {
+    const settings = await loadSettings();
+    return { type: "getSettingsResponse", settings };
+  } catch (e) {
+    log.error("handleGetSettings", e);
+    return { type: "error", code: "UNKNOWN", message: String(e) };
+  }
+}
+
+async function handleSaveSettings(
+  req: SaveSettingsRequest,
+): Promise<SaveSettingsResponse | ErrorResponse> {
+  try {
+    await saveSettings(req.patch ?? {});
+    return { type: "saveSettingsResponse" };
+  } catch (e) {
+    log.error("handleSaveSettings", e);
+    return { type: "error", code: "UNKNOWN", message: String(e) };
+  }
+}
+
 // Eagerly open the cache so first request is fast.
 void cache.open();
 
@@ -99,6 +150,7 @@ void cache.open();
   BASE_OVERRIDE_COLUMNS,
   cache,
   getPlayerStats: handleGetPlayerStats,
+  bootstrapPlayers: handleBootstrapPlayers,
   saveMapping,
   loadMapping,
 };
@@ -106,6 +158,18 @@ void cache.open();
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   if (isGetPlayerStatsRequest(msg)) {
     void handleGetPlayerStats(msg).then(sendResponse);
+    return true; // async response
+  }
+  if (isBootstrapPlayersRequest(msg)) {
+    void handleBootstrapPlayers(msg).then(sendResponse);
+    return true; // async response
+  }
+  if (isGetSettingsRequest(msg)) {
+    void handleGetSettings().then(sendResponse);
+    return true; // async response
+  }
+  if (isSaveSettingsRequest(msg)) {
+    void handleSaveSettings(msg).then(sendResponse);
     return true; // async response
   }
   sendResponse({ type: "error", code: "BAD_REQUEST", message: "unknown message" });

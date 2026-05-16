@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "fNBA — Fantasy NBA Stats Overlay",
+  "name": "fNBA - Fantasy NBA Stats Overlay",
   "version": "0.0.1",
   "description": "Advanced stats overlay for Yahoo Fantasy Basketball.",
   "icons": {
@@ -10,6 +10,16 @@
     "128": "public/icons/icon-128.png"
   },
   "background": { "service_worker": "src/background/index.ts", "type": "module" },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://basketball.fantasysports.yahoo.com/nba/*/team",
+        "https://basketball.fantasysports.yahoo.com/nba/*/players*"
+      ],
+      "js": ["src/content/index.ts"],
+      "run_at": "document_idle"
+    }
+  ],
   "permissions": ["storage", "declarativeNetRequest"],
   "host_permissions": [
     "https://stats.nba.com/*",

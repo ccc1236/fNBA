@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { isGetPlayerStatsRequest } from "../../src/shared/messages.js";
+import { isGetPlayerStatsRequest, isBootstrapPlayersRequest } from "../../src/shared/messages.js";
 
 describe("message guards", () => {
   it("accepts a well-formed getPlayerStats request", () => {
@@ -24,5 +24,28 @@ describe("message guards", () => {
   it("rejects non-array yahooIds", () => {
     const msg = { type: "getPlayerStats", yahooIds: "5007", window: "Season", perMode: "PerGame" };
     expect(isGetPlayerStatsRequest(msg)).toBe(false);
+  });
+});
+
+describe("isBootstrapPlayersRequest", () => {
+  it("accepts a well-formed request", () => {
+    const msg = {
+      type: "bootstrapPlayers",
+      season: "2025-26",
+      players: [{ yahooId: "y1", name: "Luka Dončić", team: "LAL" }],
+    };
+    expect(isBootstrapPlayersRequest(msg)).toBe(true);
+  });
+  it("rejects wrong type", () => {
+    expect(isBootstrapPlayersRequest({ type: "other", season: "2025-26", players: [] })).toBe(false);
+  });
+  it("rejects non-array players", () => {
+    expect(isBootstrapPlayersRequest({ type: "bootstrapPlayers", season: "2025-26", players: "x" }))
+      .toBe(false);
+  });
+  it("rejects malformed player entries", () => {
+    expect(isBootstrapPlayersRequest({
+      type: "bootstrapPlayers", season: "2025-26", players: [{ yahooId: 1, name: "x", team: "y" }],
+    })).toBe(false);
   });
 });
