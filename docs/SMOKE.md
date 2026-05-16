@@ -129,3 +129,28 @@ Open the SW DevTools. Run:
 await fnba.loadMapping("2025-26");
 ```
 Expected: an array with one entry per Yahoo player you have viewed across My Team and Players. Length grows as you visit different pages and rosters.
+
+## 8. Sort interaction
+
+Click the **PTS** column header on Yahoo (descending sort). Reload if the click triggers a Yahoo navigation; the sort persists in the URL.
+
+- Switch the Window dropdown to L5: rows should re-sort so the highest L5 PTS player is on top.
+- Switch back to Season: rows re-sort by season PTS.
+- The values shown in the PTS column are the filtered values (not stale), AND the row order reflects those filtered values.
+
+Repeat for ascending sort: click PTS twice to flip Yahoo to ascending. After reload, the same filter-changes-trigger-resort behavior applies, in ascending order.
+
+## 9. Layout / breathing room
+
+- Initial page load: no horizontal scrollbar.
+- The stats table area is wider than Yahoo's default (claims the right-rail's empty space) but with roughly 200 px of white margin on each side.
+- On an ultra-wide monitor (viewport > 2400 px), the table caps at 2400 px and centers.
+- Yahoo's outer chrome (top branding bar, navigation) stays at its original centered width; only the main content column widens.
+
+## Known limitations (current build)
+
+- **FGM/A and FTM/FTA columns do not update** when window / per-mode changes. Yahoo packs the made/attempted pair into a single cell; our override layer doesn't handle compound cells yet. Open issue tracked in `docs/superpowers/plans/2026-05-16-fnba-plan-2-followups.md`.
+- **FG% and FT% don't change on Per 36 / Per 100 swap.** Probably correct (shooting percentages are scale-invariant), pending verification.
+- **eFG% / TS% / USG% are not sortable.** Clicking those headers does nothing. Sort applies only to Yahoo's native columns.
+- **My Team page** has not been smoke-tested on the live site (only against saved fixture).
+- **Yahoo native filter de-emphasis** ("(fNBA active)" annotation) has not been visually confirmed; the heuristic may not match the live "Stats" dropdown.
