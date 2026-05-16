@@ -2,9 +2,29 @@ import { ADVANCED_COLUMNS, BASE_OVERRIDE_COLUMNS } from "../shared/columns.js";
 import { formatStat } from "../shared/format.js";
 import type { PlayerStatRow, YahooPlayerId } from "../shared/types.js";
 
+const GROUP_HEADER_LABEL = "Advanced";
+
 function getYahooIdFromRow(row: HTMLTableRowElement): YahooPlayerId | null {
   const a = row.querySelector<HTMLAnchorElement>("a[data-ys-playerid]");
   return a?.getAttribute("data-ys-playerid") ?? null;
+}
+
+/** Yahoo terminates every table row with a `<th|td class="No-p Spacer">`. We
+ *  insert our cells before that spacer so column-alignment between rows
+ *  stays sensible. Falls back to appending when no spacer is present. */
+function isSpacerCell(el: Element | null): boolean {
+  if (!el) return false;
+  const cls = (el.className || "").toString();
+  return /\bSpacer\b/.test(cls);
+}
+
+function insertBeforeSpacerOrAppend(row: Element, cell: Element): void {
+  const last = row.lastElementChild;
+  if (isSpacerCell(last)) {
+    row.insertBefore(cell, last);
+  } else {
+    row.appendChild(cell);
+  }
 }
 
 /**
@@ -26,6 +46,13 @@ function buildHeaderIndex(table: HTMLTableElement): Map<string, number> {
 
 /**
  * Idempotent: removes prior fNBA columns and override marks before rendering.
+ *
+ * Yahoo's tables have two thead rows: a group row (Rankings / Field Goals /
+ * Free Throws / Miscellaneous / ...) and a label row (PTS / REB / AST / ...).
+ * We append a colspan-N "Advanced" group cell to the group row when present,
+ * and individual labels to the label row, then append per-row adv cells in
+ * the tbody. All insertions go before the trailing spacer column so the
+ * extra labels line up with the extra body cells.
  */
 export function renderColumns(
   table: HTMLTableElement,
@@ -34,33 +61,42 @@ export function renderColumns(
   clearFnbaCells(table);
 
   const headerIndex = buildHeaderIndex(table);
+  const allHeadRows = table.querySelectorAll("thead tr");
 
-  // Append adv column headers to the last thead row (the one with actual labels).
-  const rowsThead = table.querySelectorAll("thead tr");
-  const headerRow = rowsThead.length > 0 ? rowsThead[rowsThead.length - 1]! : null;
-  if (headerRow) {
+  // Group-row header (only when there are >= 2 thead rows).
+  if (allHeadRows.length >= 2) {
+    const groupRow = allHeadRows[0]!;
+    const groupTh = document.createElement("th");
+    groupTh.dataset.fnba = "group";
+    groupTh.colSpan = ADVANCED_COLUMNS.length;
+    groupTh.textContent = GROUP_HEADER_LABEL;
+    insertBeforeSpacerOrAppend(groupRow, groupTh);
+  }
+
+  // Individual labels (last thead row).
+  const labelRow = allHeadRows.length > 0 ? allHeadRows[allHeadRows.length - 1]! : null;
+  if (labelRow) {
     for (const col of ADVANCED_COLUMNS) {
       const th = document.createElement("th");
       th.dataset.fnba = col.key;
       th.textContent = col.label;
-      headerRow.appendChild(th);
+      insertBeforeSpacerOrAppend(labelRow, th);
     }
   }
 
+  // Per-row adv cells + Base overrides.
   const rows = Array.from(table.querySelectorAll<HTMLTableRowElement>("tbody tr"));
   for (const row of rows) {
     const yahooId = getYahooIdFromRow(row);
     const stats = yahooId ? data[yahooId]?.stats ?? null : null;
 
-    // Append adv cells (mirrors header position; null stats render as "-").
     for (const col of ADVANCED_COLUMNS) {
       const td = document.createElement("td");
       td.dataset.fnba = col.key;
       td.textContent = formatStat(stats?.[col.key] ?? null, col.decimals, col.multiplier);
-      row.appendChild(td);
+      insertBeforeSpacerOrAppend(row, td);
     }
 
-    // Override Yahoo's Base stat cells in place via the header-index map.
     if (stats) {
       for (const col of BASE_OVERRIDE_COLUMNS) {
         const yahooLabel = col.yahooHeader;

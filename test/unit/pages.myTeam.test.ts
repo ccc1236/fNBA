@@ -32,6 +32,6 @@ describe("myTeam page module", () => {
   it("mounts a filter bar and injects columns", async () => {
     await run({ kind: "myTeam", leagueId: "123456" });
     expect(document.querySelector(".fnba-bar-host")).not.toBeNull();
-    expect(document.querySelectorAll("th[data-fnba]").length).toBe(3);
+    expect(document.querySelectorAll('th[data-fnba]:not([data-fnba="group"])').length).toBe(3);
   });
 });

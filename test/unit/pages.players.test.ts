@@ -51,8 +51,18 @@ describe("players page module", () => {
 
   it("injects three new column headers (eFG%, TS%, USG%)", async () => {
     await run({ kind: "players", leagueId: "123456" });
-    const headers = Array.from(document.querySelectorAll("th[data-fnba]")).map((h) => h.textContent);
+    const headers = Array.from(
+      document.querySelectorAll('th[data-fnba]:not([data-fnba="group"])'),
+    ).map((h) => h.textContent);
     expect(headers).toEqual(["eFG%", "TS%", "USG%"]);
+  });
+
+  it("adds an Advanced colspan group header to the real Yahoo fixture", async () => {
+    await run({ kind: "players", leagueId: "123456" });
+    const group = document.querySelector('th[data-fnba="group"]') as HTMLTableCellElement | null;
+    expect(group).not.toBeNull();
+    expect(group!.textContent).toBe("Advanced");
+    expect(group!.colSpan).toBe(3);
   });
 
   it("populates adv cells in player rows", async () => {

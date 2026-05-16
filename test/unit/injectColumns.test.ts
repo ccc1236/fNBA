@@ -76,4 +76,57 @@ describe("renderColumns", () => {
     expect(t.querySelectorAll("[data-fnba]")).toHaveLength(0);
     expect(t.querySelectorAll("[data-fnba-override]")).toHaveLength(0);
   });
+
+  it("adds an Advanced colspan group header when the table has two thead rows", () => {
+    document.body.innerHTML = `
+      <table>
+        <thead>
+          <tr><th colspan="2">Misc</th></tr>
+          <tr><th>Players</th><th>PTS</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><a data-ys-playerid="6014" title="Luka">Luka</a></td><td><div>99</div></td></tr>
+        </tbody>
+      </table>`;
+    const t = document.querySelector("table")!;
+    renderColumns(t, SAMPLE);
+    const group = t.querySelector('thead tr:first-child th[data-fnba="group"]') as HTMLTableCellElement;
+    expect(group).not.toBeNull();
+    expect(group.textContent).toBe("Advanced");
+    expect(group.colSpan).toBe(3);
+  });
+
+  it("does NOT add a group header when the table has only one thead row", () => {
+    const t = mkTable(); // single thead row
+    renderColumns(t, SAMPLE);
+    expect(t.querySelector('th[data-fnba="group"]')).toBeNull();
+  });
+
+  it("inserts adv cells before a trailing spacer column", () => {
+    document.body.innerHTML = `
+      <table>
+        <thead>
+          <tr><th>Players</th><th>PTS</th><th class="No-p Spacer"></th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><a data-ys-playerid="6014" title="Luka">Luka</a></td>
+            <td><div>99</div></td>
+            <td class="No-p Spacer"></td>
+          </tr>
+        </tbody>
+      </table>`;
+    const t = document.querySelector("table")!;
+    renderColumns(t, SAMPLE);
+
+    const labelRow = t.querySelector("thead tr") as HTMLTableRowElement;
+    expect((labelRow.lastElementChild as HTMLElement).className).toContain("Spacer");
+    const headerCells = Array.from(labelRow.children);
+    expect(headerCells[headerCells.length - 2]?.getAttribute("data-fnba")).toBe("USG_PCT");
+
+    const body = t.querySelector("tbody tr") as HTMLTableRowElement;
+    expect((body.lastElementChild as HTMLElement).className).toContain("Spacer");
+    const bodyCells = Array.from(body.children);
+    expect(bodyCells[bodyCells.length - 2]?.getAttribute("data-fnba")).toBe("USG_PCT");
+  });
 });
