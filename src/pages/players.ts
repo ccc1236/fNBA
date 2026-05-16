@@ -42,31 +42,41 @@ async function send<T>(req: unknown): Promise<T> {
  */
 function ensureTableFits(table: HTMLTableElement): () => void {
   const restorers: Array<() => void> = [];
+
+  // Walk up the ancestor chain and widen every level that has a fixed
+  // pixel width. Yahoo's main content column is constrained at a single
+  // level (Page-wrap -> Page), but multiple intermediate divs inherit
+  // explicit widths from layout JS; widening only one level can be
+  // overridden by descendants' own fixed widths. Use !important to win
+  // against Yahoo's stylesheet.
   let cur: HTMLElement | null = table.parentElement;
   let depth = 0;
-  const MAX_DEPTH = 12;
-  const WIDER_BY = 1.2;
+  const MAX_DEPTH = 14;
   while (cur && cur !== document.body && cur !== document.documentElement && depth < MAX_DEPTH) {
-    const parent = cur.parentElement;
-    if (!parent) break;
-    const w = parseFloat(getComputedStyle(cur).width);
-    const pw = parseFloat(getComputedStyle(parent).width);
-    if (pw > 0 && pw > w * WIDER_BY) {
-      // Narrowing point reached. Widen cur to fill its parent.
-      const prevWidth = cur.style.width;
-      const prevMaxWidth = cur.style.maxWidth;
+    const cs = getComputedStyle(cur);
+    const w = cs.width;
+    if (w && w.endsWith("px") && w !== "0px") {
       const el = cur;
-      el.style.width = "100%";
-      el.style.maxWidth = "none";
+      const prev = el.style.getPropertyValue("width");
+      const prevPrio = el.style.getPropertyPriority("width");
+      const prevMax = el.style.getPropertyValue("max-width");
+      const prevMaxPrio = el.style.getPropertyPriority("max-width");
+      el.style.setProperty("width", "100%", "important");
+      el.style.setProperty("max-width", "none", "important");
       restorers.push(() => {
-        el.style.width = prevWidth;
-        el.style.maxWidth = prevMaxWidth;
+        el.style.setProperty("width", prev, prevPrio);
+        el.style.setProperty("max-width", prevMax, prevMaxPrio);
       });
-      break;
     }
-    cur = parent;
+    cur = cur.parentElement;
     depth++;
   }
+
+  // Force a synchronous reflow so the new widths are committed before any
+  // subsequent layout-dependent work. Reading offsetWidth is the standard
+  // trick.
+  void document.body.offsetWidth;
+
   return () => restorers.forEach((r) => r());
 }
 
