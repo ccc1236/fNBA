@@ -143,6 +143,11 @@ export async function run(_info: PageInfo): Promise<{ teardown: () => void }> {
   let settings = bar.getSettings();
 
   const restoreScroll = ensureTableFits(table);
+  // Yahoo's layout JS recomputes column widths on resize, not on mutation.
+  // Our ancestor-widen takes immediate effect in the DOM but the columns
+  // stay at their cached widths until something nudges the layout. A
+  // synthetic resize event is the standard nudge.
+  window.dispatchEvent(new Event("resize"));
   const restoreYahoo = applyYahooFilterFade(table);
 
   await paint(table, bar, settings);
