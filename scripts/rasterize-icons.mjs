@@ -1,7 +1,7 @@
 // Rasterize the fNBA logo SVGs to PNG at extension-icon sizes.
 //
 // - Primary: blue-moon gradient -> public/icons/icon-{16,32,48,128}.png
-// - All colorways (blue moon, black, mint) -> docs/logo-samples/png/{name}-{size}.png
+// - All colorways (blue moon, black, mint, white) -> docs/logo-samples/png/{name}-{size}.png
 //
 // Run: node scripts/rasterize-icons.mjs
 
@@ -22,6 +22,7 @@ const COLORWAYS = [
   { name: "blue-moon", svg: "D-bluemoon-gradient.svg", primary: true },
   { name: "black", svg: "D-black-gradient.svg", primary: false },
   { name: "mint", svg: "D-mint-gradient.svg", primary: false },
+  { name: "white", svg: "D-white.svg", primary: false },
 ];
 
 async function rasterize(svgPath, outPath, size) {

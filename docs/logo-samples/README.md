@@ -17,8 +17,9 @@ Two other approved colorways for promotional / social / community use:
 | Blue moon (primary) | `D-bluemoon-gradient.svg` | `#4A6E84 -> #1F3645` |
 | Black | `D-black-gradient.svg` | `#2C2C33 -> #050507` |
 | Mint | `D-mint-gradient.svg` | `#3CDED9 -> #08938F` |
+| White | `D-white.svg` | flat white tile, black symbol |
 
-PNG raster versions for all three colorways are in `png/` at sizes 16, 32, 48, 128.
+PNG raster versions for all four colorways are in `png/` at sizes 16, 32, 48, 128.
 
 ## Regenerating
 
