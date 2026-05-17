@@ -4,6 +4,7 @@ import { fetchLeagueDashPlayerStats, RateLimitedError, UpstreamUnavailableError 
 import { loadMapping, saveMapping } from "./playerMapping.js";
 import { bootstrapPlayers } from "./mappingService.js";
 import { currentSeason } from "./season.js";
+import { mergeBaseAndAdvanced } from "./mergeStats.js";
 import { windowByKey } from "../shared/windows.js";
 import { ADVANCED_COLUMNS, BASE_OVERRIDE_COLUMNS } from "../shared/columns.js";
 import {
@@ -63,13 +64,7 @@ async function handleGetPlayerStats(req: GetPlayerStatsRequest): Promise<MsgResp
       fetchWithCache(req, "Base", season),
       fetchWithCache(req, "Advanced", season),
     ]);
-    const byNbaId = new Map<number, PlayerStatRow>();
-    for (const row of base) byNbaId.set(row.nbaId, { ...row, stats: { ...row.stats } });
-    for (const row of adv) {
-      const existing = byNbaId.get(row.nbaId);
-      if (existing) Object.assign(existing.stats, row.stats);
-      else byNbaId.set(row.nbaId, row);
-    }
+    const byNbaId = mergeBaseAndAdvanced(base, adv);
 
     const byYahooId: Record<YahooPlayerId, PlayerStatRow | null> = {};
     for (const yahooId of req.yahooIds) {

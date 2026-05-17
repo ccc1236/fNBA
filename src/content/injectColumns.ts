@@ -1,4 +1,9 @@
-import { ADVANCED_COLUMNS, BASE_OVERRIDE_COLUMNS } from "../shared/columns.js";
+import {
+  ADVANCED_COLUMNS,
+  BASE_OVERRIDE_COLUMNS,
+  COMPOUND_OVERRIDE_COLUMNS,
+  DERIVED_OVERRIDE_COLUMNS,
+} from "../shared/columns.js";
 import { formatStat } from "../shared/format.js";
 import type { PlayerStatRow, YahooPlayerId } from "../shared/types.js";
 
@@ -120,6 +125,40 @@ export function renderColumns(
         const inner = cell.querySelector("div");
         const target = inner ?? cell;
         target.textContent = formatStat(stats[col.key] ?? null, col.decimals, col.multiplier);
+        cell.dataset.fnbaOverride = "1";
+      }
+
+      // Compound overrides (Yahoo renders `made/attempted` in a single cell).
+      for (const col of COMPOUND_OVERRIDE_COLUMNS) {
+        const idx = headerIndex.get(col.yahooHeader);
+        if (idx === undefined) continue;
+        const cell = row.children[idx] as HTMLElement | undefined;
+        if (!cell) continue;
+        const make = stats[col.makeKey];
+        const att = stats[col.attemptKey];
+        const target = cell.querySelector("div") ?? cell;
+        if (make == null && att == null) {
+          target.textContent = "-";
+        } else {
+          target.textContent = `${formatStat(make ?? null, col.decimals)}${col.separator}${formatStat(att ?? null, col.decimals)}`;
+        }
+        cell.dataset.fnbaOverride = "1";
+      }
+
+      // Derived overrides (computed ratio of two nba.com stats, e.g. A/T).
+      for (const col of DERIVED_OVERRIDE_COLUMNS) {
+        const idx = headerIndex.get(col.yahooHeader);
+        if (idx === undefined) continue;
+        const cell = row.children[idx] as HTMLElement | undefined;
+        if (!cell) continue;
+        const num = stats[col.numeratorKey];
+        const den = stats[col.denominatorKey];
+        const target = cell.querySelector("div") ?? cell;
+        if (num == null || den == null || den === 0) {
+          target.textContent = "-";
+        } else {
+          target.textContent = (num / den).toFixed(col.decimals);
+        }
         cell.dataset.fnbaOverride = "1";
       }
     }

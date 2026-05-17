@@ -42,6 +42,18 @@ Done. All checks pass.
 
 Dropped. Yahoo's "Stats" dropdown is no longer a `<select>` element (it's now a custom `<div>`/`<button>` component), so our heuristic found nothing. Considered swapping to a custom-element selector or moving the hint into fNBA's own filter bar, but settled on removing the `labelYahooFilter` function entirely. The override behavior is self-evident from the changed numbers; we don't need to advertise it. Yahoo's dropdown stays fully functional; clicking it triggers a page reload after which fNBA re-applies its overrides on top.
 
+### Combined FGM/A column not updating + A/T not updating (Issue #1 from prior list)
+
+Fixed in v0.0.6.
+
+Root cause was twofold:
+
+1. Missing compound column type for Yahoo's `FGM/A` cell (single `<td>` rendering `made/attempted`) and no derived column type for A/T. Added `CompoundColumnDef` (with `makeKey` + `attemptKey` + `separator` + `yahooHeader`) and `DerivedColumnDef` (with `numeratorKey` + `denominatorKey`). Both are iterated alongside `BASE_OVERRIDE_COLUMNS` inside `renderColumns`.
+
+2. **nba.com's Advanced MeasureType ignores PerMode for counting stats.** When we merged Advanced over Base, Advanced's season-totals FGM (e.g. 644) overwrote Base's per-game FGM (e.g. 9.9). FG% looked correct only because the ratio is the same in either basis. Extracted the merge into `src/background/mergeStats.ts` and reversed the order: Advanced seeds first, Base wins on overlap. Locked in with four new unit tests in `test/unit/mergeStats.test.ts`.
+
+FTM and FTA are shown in separate cells on the views we inspected (not compound), so no compound entry for them yet. Easy to add later if a different Yahoo view turns out to combine them.
+
 ## Still open
 
 ### 1. Combined columns FGM/A and FTM/FTA do not update

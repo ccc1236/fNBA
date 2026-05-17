@@ -126,6 +126,84 @@ describe("renderColumns", () => {
     expect(ptsCell.hasAttribute("data-fnba-override")).toBe(true);
   });
 
+  it("overrides Yahoo's compound FGM/A cell as `made/attempted`", () => {
+    document.body.innerHTML = `
+      <table>
+        <thead>
+          <tr><th>Players</th><th>FGM/A*</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><a data-ys-playerid="6014" title="Luka">Luka</a></td><td><div>11.1/22.2</div></td></tr>
+        </tbody>
+      </table>`;
+    const t = document.querySelector("table")!;
+    renderColumns(t, {
+      "6014": {
+        nbaId: 1629029, name: "Luka", teamAbbr: "LAL", position: null,
+        stats: { FGM: 9.9, FGA: 17.4 },
+      },
+    });
+    const lukaRow = t.querySelector('tr:has(a[data-ys-playerid="6014"])')!;
+    const fgmCell = lukaRow.children[1] as HTMLElement;
+    expect(fgmCell.textContent).toBe("9.9/17.4");
+    expect(fgmCell.hasAttribute("data-fnba-override")).toBe(true);
+  });
+
+  it("renders compound cell as `-` when both inputs are missing", () => {
+    document.body.innerHTML = `
+      <table>
+        <thead><tr><th>Players</th><th>FGM/A*</th></tr></thead>
+        <tbody>
+          <tr><td><a data-ys-playerid="6014" title="Luka">Luka</a></td><td><div>11.1/22.2</div></td></tr>
+        </tbody>
+      </table>`;
+    const t = document.querySelector("table")!;
+    renderColumns(t, {
+      "6014": { nbaId: 1, name: "Luka", teamAbbr: "LAL", position: null, stats: {} },
+    });
+    const cell = (t.querySelector("tbody tr")!.children[1] as HTMLElement);
+    expect(cell.textContent).toBe("-");
+  });
+
+  it("overrides Yahoo's A/T cell with AST / TOV", () => {
+    document.body.innerHTML = `
+      <table>
+        <thead><tr><th>Players</th><th>A/T</th></tr></thead>
+        <tbody>
+          <tr><td><a data-ys-playerid="6014" title="Luka">Luka</a></td><td><div>1.234</div></td></tr>
+        </tbody>
+      </table>`;
+    const t = document.querySelector("table")!;
+    renderColumns(t, {
+      "6014": {
+        nbaId: 1, name: "Luka", teamAbbr: "LAL", position: null,
+        stats: { AST: 8.3, TOV: 2.5 },
+      },
+    });
+    const cell = (t.querySelector("tbody tr")!.children[1] as HTMLElement);
+    expect(cell.textContent).toBe("3.320");
+    expect(cell.hasAttribute("data-fnba-override")).toBe(true);
+  });
+
+  it("renders A/T as `-` when TOV is 0 (division-by-zero guard)", () => {
+    document.body.innerHTML = `
+      <table>
+        <thead><tr><th>Players</th><th>A/T</th></tr></thead>
+        <tbody>
+          <tr><td><a data-ys-playerid="6014" title="Luka">Luka</a></td><td><div>1.234</div></td></tr>
+        </tbody>
+      </table>`;
+    const t = document.querySelector("table")!;
+    renderColumns(t, {
+      "6014": {
+        nbaId: 1, name: "Luka", teamAbbr: "LAL", position: null,
+        stats: { AST: 8.3, TOV: 0 },
+      },
+    });
+    const cell = (t.querySelector("tbody tr")!.children[1] as HTMLElement);
+    expect(cell.textContent).toBe("-");
+  });
+
   it("inserts adv cells before a trailing spacer column", () => {
     document.body.innerHTML = `
       <table>

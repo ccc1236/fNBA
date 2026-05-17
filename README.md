@@ -20,7 +20,6 @@ The overlay replaces the values Yahoo displays; the page's HTML structure, sorti
 - **fNBA overrides Yahoo's displayed numbers** with values computed from nba.com. Yahoo's own "Stats" dropdown (Season / Last 7 / Last 14 / Last 30 days) still works, but its picks are immediately replaced by fNBA's overrides after the page reloads. The two time concepts are different: Yahoo's filter is days, fNBA's is games the player actually appeared in.
 - **L5 / L10 are player-scoped, not team-scoped.** A player who sat out the last three games and played in five before that gets L5 from those five appearances, not from his team's last five team games.
 - **Ratio stats are scale-invariant across Per Mode.** eFG%, TS%, USG%, FG%, FT%, and 3P% are all ratios or per-possession rates. They do not change between Per Game / Per 36 / Per 100. The Window (Season / L5 / L10) does change them because the game sample changes.
-- **Combined columns are not yet overridden.** Yahoo's `FGM/A` and `FTM/FTA` cells (rendered as `9.9/17.4` etc.) still show Yahoo's numbers and do not reflect fNBA's window or per-mode selection. The individual FG% and FT% columns next to them do reflect fNBA's selection.
 - The extension only fires on Yahoo Fantasy Basketball Players and My Team pages. It does not send data anywhere outside of stats.nba.com requests for stat data.
 
 ## Install

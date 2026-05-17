@@ -35,3 +35,36 @@ export const BASE_OVERRIDE_COLUMNS: ColumnDef[] = [
   { key: "FT_PCT", label: "FT%", source: "Base", decimals: 3, yahooHeader: "FT%" },
   { key: "TOV", label: "TO", source: "Base", decimals: 1, yahooHeader: "TO" },
 ];
+
+/** A compound override: Yahoo renders the made and attempted values for
+ *  a stat in a single cell, separated (e.g., `9.9/17.4`). We override by
+ *  formatting both inputs and joining with `separator`. Matched against
+ *  Yahoo's table by `yahooHeader` (trailing `*` and PUA sort glyphs are
+ *  stripped before comparison; see buildHeaderIndex). */
+export interface CompoundColumnDef {
+  makeKey: string;
+  attemptKey: string;
+  source: MeasureType;
+  decimals: number;
+  separator: string;
+  yahooHeader: string;
+}
+
+export const COMPOUND_OVERRIDE_COLUMNS: CompoundColumnDef[] = [
+  { makeKey: "FGM", attemptKey: "FGA", source: "Base", decimals: 1, separator: "/", yahooHeader: "FGM/A" },
+];
+
+/** A derived override: the displayed value is computed by dividing one
+ *  nba.com stat by another (e.g., A/T = AST / TOV). Falls back to `-`
+ *  when either input is missing or the denominator is zero. */
+export interface DerivedColumnDef {
+  numeratorKey: string;
+  denominatorKey: string;
+  source: MeasureType;
+  decimals: number;
+  yahooHeader: string;
+}
+
+export const DERIVED_OVERRIDE_COLUMNS: DerivedColumnDef[] = [
+  { numeratorKey: "AST", denominatorKey: "TOV", source: "Base", decimals: 3, yahooHeader: "A/T" },
+];
