@@ -38,6 +38,10 @@ By design. These are scale-invariant ratios; nba.com returns identical numbers r
 
 Done. All checks pass.
 
+### Yahoo native stat-range filter de-emphasis (Issue #3 from prior list)
+
+Dropped. Yahoo's "Stats" dropdown is no longer a `<select>` element (it's now a custom `<div>`/`<button>` component), so our heuristic found nothing. Considered swapping to a custom-element selector or moving the hint into fNBA's own filter bar, but settled on removing the `labelYahooFilter` function entirely. The override behavior is self-evident from the changed numbers; we don't need to advertise it. Yahoo's dropdown stays fully functional; clicking it triggers a page reload after which fNBA re-applies its overrides on top.
+
 ## Still open
 
 ### 1. Combined columns FGM/A and FTM/FTA do not update
@@ -52,10 +56,6 @@ Fix sketch: add a compound column descriptor to `src/shared/columns.ts`, e.g.
 ```
 
 Or skip the columns explicitly (leave at Yahoo's values, document in spec).
-
-### 2. Yahoo native stat-range filter de-emphasis (verification pending)
-
-`applyYahooFilterFade` in `src/pages/players.ts` looks for a `<select>` with options matching `/season|last\s*\d/i`. The Stats dropdown on the live page shows "Season (avg)"; the heuristic may not match. Quick visual check on the live page is enough: look for the `(fNBA active)` purple note next to Yahoo's own stats-range dropdown, and that dropdown should be semi-transparent + non-interactive. If it is not, widen the regex.
 
 ### 3. Sortable injected columns (deferred indefinitely)
 

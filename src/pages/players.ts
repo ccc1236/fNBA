@@ -139,37 +139,6 @@ function ensureTableFits(table: HTMLTableElement): () => void {
   return () => restorers.forEach((r) => r());
 }
 
-function applyYahooFilterFade(table: HTMLTableElement): () => void {
-  // Yahoo's native stat-range selector typically sits in a form labeled
-  // "Stats Range" or contains a select with options like "Season" / "Last 14".
-  // We look in the table's ancestor chain for a candidate.
-  const ancestor = table.closest("section, div, form") ?? document.body;
-  const candidates = Array.from(
-    ancestor.querySelectorAll<HTMLElement>("select"),
-  ).filter((s) => {
-    const sel = s as HTMLSelectElement;
-    const opts = Array.from(sel.options).map((o) => o.textContent?.trim() ?? "");
-    return opts.some((o) => /season|last\s*\d/i.test(o));
-  });
-
-  const restorers: Array<() => void> = [];
-  for (const sel of candidates) {
-    const note = document.createElement("span");
-    note.dataset["fnba"] = "yahoo-filter-note";
-    note.textContent = " (fNBA active)";
-    note.style.cssText = "font-size:11px;color:#5f01d1;margin-left:6px;";
-    sel.parentElement?.appendChild(note);
-    const prev = sel.style.cssText;
-    sel.style.opacity = "0.5";
-    sel.style.pointerEvents = "none";
-    restorers.push(() => {
-      sel.style.cssText = prev;
-      note.remove();
-    });
-  }
-  return () => restorers.forEach((r) => r());
-}
-
 interface SortInfo {
   columnIndex: number;
   direction: "asc" | "desc";
@@ -285,7 +254,6 @@ export async function run(_info: PageInfo): Promise<{ teardown: () => void }> {
   // stay at their cached widths until something nudges the layout. A
   // synthetic resize event is the standard nudge.
   window.dispatchEvent(new Event("resize"));
-  const restoreYahoo = applyYahooFilterFade(table);
 
   await paint(table, bar, settings);
 
@@ -321,7 +289,6 @@ export async function run(_info: PageInfo): Promise<{ teardown: () => void }> {
 
   return {
     teardown: () => {
-      restoreYahoo();
       restoreScroll();
       bar.removeEventListener("fnba-filter-change", onChange);
       bar.removeEventListener("fnba-filter-refresh", onRefresh);
