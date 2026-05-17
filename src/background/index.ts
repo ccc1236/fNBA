@@ -12,6 +12,7 @@ import {
   isBootstrapPlayersRequest,
   isGetSettingsRequest,
   isSaveSettingsRequest,
+  isGetSpiderDataRequest,
   type BootstrapPlayersRequest,
   type BootstrapPlayersResponse,
   type ErrorResponse,
@@ -21,9 +22,12 @@ import {
   type MessageResponse as MsgResponse,
   type SaveSettingsRequest,
   type SaveSettingsResponse,
+  type GetSpiderDataRequest,
+  type GetSpiderDataResponse,
 } from "../shared/messages.js";
 import { loadSettings, saveSettings } from "../shared/settings.js";
-import type { PlayerStatRow, YahooPlayerId } from "../shared/types.js";
+import type { PlayerStatRow, WindowKey, PerModeKey, YahooPlayerId } from "../shared/types.js";
+import { buildSpiderData } from "./spiderService.js";
 import { log } from "../shared/logger.js";
 
 const cache = new Cache({ dbName: "fnba", defaultTtlMs: 6 * 60 * 60 * 1000 });
@@ -54,17 +58,32 @@ async function fetchWithCache(
   return rows;
 }
 
+async function fetchMergedForWindow(
+  window: WindowKey,
+  perMode: PerModeKey,
+): Promise<PlayerStatRow[]> {
+  const season = currentSeason();
+  const req: GetPlayerStatsRequest = {
+    type: "getPlayerStats",
+    yahooIds: [],
+    window,
+    perMode,
+  };
+  const [base, adv] = await Promise.all([
+    fetchWithCache(req, "Base", season),
+    fetchWithCache(req, "Advanced", season),
+  ]);
+  return Array.from(mergeBaseAndAdvanced(base, adv).values());
+}
+
 async function handleGetPlayerStats(req: GetPlayerStatsRequest): Promise<MsgResponse> {
   try {
     const season = currentSeason();
     const mapping = await loadMapping(season);
     const yahooToNba = new Map(mapping.map((m) => [m.yahooId, m.nbaId]));
 
-    const [base, adv] = await Promise.all([
-      fetchWithCache(req, "Base", season),
-      fetchWithCache(req, "Advanced", season),
-    ]);
-    const byNbaId = mergeBaseAndAdvanced(base, adv);
+    const rows = await fetchMergedForWindow(req.window, req.perMode);
+    const byNbaId = new Map(rows.map((r) => [r.nbaId, r]));
 
     const byYahooId: Record<YahooPlayerId, PlayerStatRow | null> = {};
     for (const yahooId of req.yahooIds) {
@@ -133,6 +152,32 @@ async function handleSaveSettings(
   }
 }
 
+async function handleGetSpiderData(
+  req: GetSpiderDataRequest,
+): Promise<GetSpiderDataResponse | ErrorResponse> {
+  try {
+    const season = currentSeason();
+    const mapping = await loadMapping(season);
+    const map = new Map(mapping.map((m) => [m.yahooId, m.nbaId]));
+    return await buildSpiderData({
+      yahooId: req.yahooId,
+      perMode: req.perMode,
+      mapping: map,
+      fetchMergedForWindow,
+    });
+  } catch (e) {
+    if (e instanceof RateLimitedError || e instanceof ThrottledError) {
+      throttle.triggerCooldown();
+      return { type: "error", code: "RATE_LIMITED", message: String(e) };
+    }
+    if (e instanceof UpstreamUnavailableError) {
+      return { type: "error", code: "UPSTREAM_UNAVAILABLE", message: String(e) };
+    }
+    log.error("handleGetSpiderData", e);
+    return { type: "error", code: "UNKNOWN", message: String(e) };
+  }
+}
+
 // Eagerly open the cache so first request is fast.
 void cache.open();
 
@@ -146,6 +191,7 @@ void cache.open();
   cache,
   getPlayerStats: handleGetPlayerStats,
   bootstrapPlayers: handleBootstrapPlayers,
+  getSpiderData: handleGetSpiderData,
   saveMapping,
   loadMapping,
 };
@@ -165,6 +211,10 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   }
   if (isSaveSettingsRequest(msg)) {
     void handleSaveSettings(msg).then(sendResponse);
+    return true; // async response
+  }
+  if (isGetSpiderDataRequest(msg)) {
+    void handleGetSpiderData(msg).then(sendResponse);
     return true; // async response
   }
   sendResponse({ type: "error", code: "BAD_REQUEST", message: "unknown message" });
