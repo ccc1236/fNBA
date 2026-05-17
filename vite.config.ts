@@ -14,6 +14,7 @@ export default defineConfig({
       ["test/unit/pages.*.test.ts", "jsdom"],
       ["test/unit/filterBar.test.ts", "jsdom"],
       ["test/unit/injectColumns.test.ts", "jsdom"],
+      ["test/unit/spider-chart.test.ts", "jsdom"],
     ],
   },
 });
