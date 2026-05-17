@@ -29,7 +29,7 @@ const STYLES = `
   }
   .brand {
     font-weight: 700;
-    color: #5f01d1;
+    color: #2D4A5B;
     letter-spacing: 0.02em;
   }
   select, button {
