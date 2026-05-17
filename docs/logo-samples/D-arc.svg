@@ -1,0 +1,11 @@
+<svg width="128" height="128" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg">
+  <rect width="128" height="128" rx="24" fill="#5f01d1"/>
+  <!-- 3-point arc (thinner stroke) -->
+  <path d="M 24 80 Q 64 -18 104 80" stroke="white" stroke-width="4" stroke-linecap="round" fill="none"/>
+  <!-- Ball, more breathing room above arc -->
+  <circle cx="64" cy="16" r="5" fill="white"/>
+  <!-- Hoop (donut) -->
+  <circle cx="64" cy="96" r="7" fill="none" stroke="white" stroke-width="3"/>
+  <!-- Backboard (thinner stroke) -->
+  <line x1="48" y1="108" x2="80" y2="108" stroke="white" stroke-width="4" stroke-linecap="round"/>
+</svg>

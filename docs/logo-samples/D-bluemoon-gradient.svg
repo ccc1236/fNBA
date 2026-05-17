@@ -1,0 +1,14 @@
+<svg width="128" height="128" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="bluemoon" cx="50%" cy="38%" r="68%">
+      <stop offset="0%" stop-color="#4A6E84"/>
+      <stop offset="60%" stop-color="#2D4A5B"/>
+      <stop offset="100%" stop-color="#1F3645"/>
+    </radialGradient>
+  </defs>
+  <rect width="128" height="128" rx="24" fill="url(#bluemoon)"/>
+  <path d="M 24 80 Q 64 -18 104 80" stroke="white" stroke-width="4" stroke-linecap="round" fill="none"/>
+  <circle cx="64" cy="16" r="5" fill="white"/>
+  <circle cx="64" cy="96" r="7" fill="none" stroke="white" stroke-width="3"/>
+  <line x1="48" y1="108" x2="80" y2="108" stroke="white" stroke-width="4" stroke-linecap="round"/>
+</svg>

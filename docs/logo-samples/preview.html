@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>fNBA - top 3 contenders</title>
+<style>
+  :root { color-scheme: light dark; }
+  body {
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    margin: 24px;
+    background: #fafafa;
+    color: #1a1a2e;
+  }
+  h1 { font-size: 18px; margin: 0 0 8px; }
+  .sub { font-size: 12px; color: #666; margin: 0 0 24px; }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+    max-width: 960px;
+  }
+  .card {
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 18px;
+  }
+  .card h2 { font-size: 14px; margin: 0 0 4px; }
+  .card .hex { font-size: 11px; color: #888; font-family: ui-monospace, monospace; margin: 0 0 14px; }
+  .hero {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 14px;
+  }
+  .row {
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    gap: 18px;
+  }
+  .size { text-align: center; }
+  .size span {
+    font-size: 10px;
+    color: #888;
+    display: block;
+    margin-top: 4px;
+  }
+  .tray-bg {
+    background: #2b2b2b;
+    padding: 6px;
+    border-radius: 4px;
+    display: inline-block;
+  }
+  .tray-bg-light {
+    background: #eee;
+    padding: 6px;
+    border-radius: 4px;
+    display: inline-block;
+  }
+  .blurb { font-size: 11px; color: #666; margin-top: 12px; line-height: 1.4; }
+</style>
+</head>
+<body>
+<h1>fNBA - top 3 colorways</h1>
+<p class="sub">Same symbol, three brand colors with a radial gradient (brighter at top-center, darker at edges).</p>
+
+<div class="grid">
+  <div class="card">
+    <h2>1. Black</h2>
+    <div class="hex">#2C2C33 -> #050507</div>
+    <div class="hero">
+      <img src="D-black-gradient.svg" width="128" height="128" alt="">
+    </div>
+    <div class="row">
+      <div class="size"><img src="D-black-gradient.svg" width="48" height="48" alt=""><span>48</span></div>
+      <div class="size"><img src="D-black-gradient.svg" width="32" height="32" alt=""><span>32</span></div>
+      <div class="size"><span class="tray-bg-light"><img src="D-black-gradient.svg" width="16" height="16" alt=""></span><span>16 light</span></div>
+      <div class="size"><span class="tray-bg"><img src="D-black-gradient.svg" width="16" height="16" alt=""></span><span>16 dark</span></div>
+    </div>
+    <p class="blurb">Premium minimalist. Symbol does all the talking.</p>
+  </div>
+
+  <div class="card">
+    <h2>2. Blue moon (primary)</h2>
+    <div class="hex">#4A6E84 -> #1F3645</div>
+    <div class="hero">
+      <img src="D-bluemoon-gradient.svg" width="128" height="128" alt="">
+    </div>
+    <div class="row">
+      <div class="size"><img src="D-bluemoon-gradient.svg" width="48" height="48" alt=""><span>48</span></div>
+      <div class="size"><img src="D-bluemoon-gradient.svg" width="32" height="32" alt=""><span>32</span></div>
+      <div class="size"><span class="tray-bg-light"><img src="D-bluemoon-gradient.svg" width="16" height="16" alt=""></span><span>16 light</span></div>
+      <div class="size"><span class="tray-bg"><img src="D-bluemoon-gradient.svg" width="16" height="16" alt=""></span><span>16 dark</span></div>
+    </div>
+    <p class="blurb">Deep dial-blue. Luxurious, restrained, distinct from the old purple.</p>
+  </div>
+
+  <div class="card">
+    <h2>3. Mint</h2>
+    <div class="hex">#3CDED9 -> #08938F</div>
+    <div class="hero">
+      <img src="D-mint-gradient.svg" width="128" height="128" alt="">
+    </div>
+    <div class="row">
+      <div class="size"><img src="D-mint-gradient.svg" width="48" height="48" alt=""><span>48</span></div>
+      <div class="size"><img src="D-mint-gradient.svg" width="32" height="32" alt=""><span>32</span></div>
+      <div class="size"><span class="tray-bg-light"><img src="D-mint-gradient.svg" width="16" height="16" alt=""></span><span>16 light</span></div>
+      <div class="size"><span class="tray-bg"><img src="D-mint-gradient.svg" width="16" height="16" alt=""></span><span>16 dark</span></div>
+    </div>
+    <p class="blurb">Mint turquoise. Bright, modern, instant attention in the tray.</p>
+  </div>
+</div>
+
+<p style="font-size: 11px; color: #888; margin-top: 24px; max-width: 960px;">
+Each shown at 128 (hero), 48, 32, and 16 on both light and dark backgrounds since Chrome's extension tray adapts to your system theme.
+</p>
+</body>
+</html>
