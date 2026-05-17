@@ -238,7 +238,12 @@ async function paint(table: HTMLTableElement, bar: FilterBarHandle, settings: Fi
 export async function run(_info: PageInfo): Promise<{ teardown: () => void }> {
   const table = findStatsTable();
   if (!table) {
-    log.warn("no stats table found; content script idle");
+    // No table on this page is normal: the broad /nba/*/* match pattern
+    // covers My Team's numeric team-id URLs but also matches Yahoo pages
+    // without player tables (league home, commissioner, advanced-stats
+    // view, etc.). Debug-level so it doesn't surface in chrome://extensions
+    // Errors panel.
+    log.debug("no stats table found; content script idle");
     return { teardown: () => {} };
   }
 

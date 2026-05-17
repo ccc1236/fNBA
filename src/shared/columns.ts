@@ -31,8 +31,8 @@ export const BASE_OVERRIDE_COLUMNS: ColumnDef[] = [
   { key: "STL", label: "STL", source: "Base", decimals: 1, yahooHeader: "ST" },
   { key: "BLK", label: "BLK", source: "Base", decimals: 1, yahooHeader: "BLK" },
   { key: "FG3M", label: "3PM", source: "Base", decimals: 1, yahooHeader: "3PTM" },
-  { key: "FG_PCT", label: "FG%", source: "Base", decimals: 3, yahooHeader: "FG%" },
-  { key: "FT_PCT", label: "FT%", source: "Base", decimals: 3, yahooHeader: "FT%" },
+  { key: "FTM", label: "FTM", source: "Base", decimals: 1, yahooHeader: "FTM" },
+  { key: "FTA", label: "FTA", source: "Base", decimals: 1, yahooHeader: "FTA" },
   { key: "TOV", label: "TO", source: "Base", decimals: 1, yahooHeader: "TO" },
 ];
 
@@ -67,4 +67,11 @@ export interface DerivedColumnDef {
 
 export const DERIVED_OVERRIDE_COLUMNS: DerivedColumnDef[] = [
   { numeratorKey: "AST", denominatorKey: "TOV", source: "Base", decimals: 3, yahooHeader: "A/T" },
+  // FG% and FT% derived from rounded made/attempted so the displayed ratio
+  // matches FGM/A and FTM/FTA cells visually. nba.com's raw FG_PCT/FT_PCT
+  // are computed from un-rounded season totals and drift slightly when the
+  // displayed counting stats are rounded to 1 decimal at Per-36/Per-100
+  // scaling. Visual consistency > 0.001-precision in the percentage.
+  { numeratorKey: "FGM", denominatorKey: "FGA", source: "Base", decimals: 3, yahooHeader: "FG%" },
+  { numeratorKey: "FTM", denominatorKey: "FTA", source: "Base", decimals: 3, yahooHeader: "FT%" },
 ];

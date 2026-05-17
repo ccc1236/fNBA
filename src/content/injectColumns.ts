@@ -145,7 +145,10 @@ export function renderColumns(
         cell.dataset.fnbaOverride = "1";
       }
 
-      // Derived overrides (computed ratio of two nba.com stats, e.g. A/T).
+      // Derived overrides (computed ratio of two nba.com stats, e.g. A/T,
+      // FG%, FT%). Routed through formatStat so 3-decimal ratios in [0, 1)
+      // get the leading-zero strip (".569" not "0.569"), matching the rest
+      // of fNBA's percentage formatting.
       for (const col of DERIVED_OVERRIDE_COLUMNS) {
         const idx = headerIndex.get(col.yahooHeader);
         if (idx === undefined) continue;
@@ -157,7 +160,7 @@ export function renderColumns(
         if (num == null || den == null || den === 0) {
           target.textContent = "-";
         } else {
-          target.textContent = (num / den).toFixed(col.decimals);
+          target.textContent = formatStat(num / den, col.decimals);
         }
         cell.dataset.fnbaOverride = "1";
       }

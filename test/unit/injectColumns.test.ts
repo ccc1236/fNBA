@@ -69,6 +69,36 @@ describe("renderColumns", () => {
     expect(ptsCell.hasAttribute("data-fnba-override")).toBe(true);
   });
 
+  it("overrides Yahoo's FTM and FTA cells (separate columns, FTA header has a trailing *)", () => {
+    document.body.innerHTML = `
+      <table>
+        <thead>
+          <tr><th>Players</th><th>FTM</th><th>FTA*</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><a data-ys-playerid="6014" title="Luka">Luka</a></td>
+            <td><div>1.1</div></td>
+            <td><div>2.2</div></td>
+          </tr>
+        </tbody>
+      </table>`;
+    const t = document.querySelector("table")!;
+    renderColumns(t, {
+      "6014": {
+        nbaId: 1629029, name: "Luka", teamAbbr: "LAL", position: null,
+        stats: { FTM: 6.1, FTA: 7.4 },
+      },
+    });
+    const row = t.querySelector("tbody tr")!;
+    const ftmCell = row.children[1] as HTMLElement;
+    const ftaCell = row.children[2] as HTMLElement;
+    expect(ftmCell.textContent).toBe("6.1");
+    expect(ftaCell.textContent).toBe("7.4");
+    expect(ftmCell.hasAttribute("data-fnba-override")).toBe(true);
+    expect(ftaCell.hasAttribute("data-fnba-override")).toBe(true);
+  });
+
   it("clearFnbaCells removes injected and override marks", () => {
     const t = mkTable();
     renderColumns(t, SAMPLE);
@@ -183,6 +213,66 @@ describe("renderColumns", () => {
     const cell = (t.querySelector("tbody tr")!.children[1] as HTMLElement);
     expect(cell.textContent).toBe("3.320");
     expect(cell.hasAttribute("data-fnba-override")).toBe(true);
+  });
+
+  it("derives FT% from rounded FTM/FTA so the visual ratio matches", () => {
+    document.body.innerHTML = `
+      <table>
+        <thead><tr><th>Players</th><th>FT%</th></tr></thead>
+        <tbody>
+          <tr><td><a data-ys-playerid="6014" title="Luka">Luka</a></td><td><div>.831</div></td></tr>
+        </tbody>
+      </table>`;
+    const t = document.querySelector("table")!;
+    renderColumns(t, {
+      "6014": {
+        nbaId: 1, name: "Luka", teamAbbr: "LAL", position: null,
+        stats: { FTM: 6.1, FTA: 7.4, FT_PCT: 0.831 },
+      },
+    });
+    const cell = (t.querySelector("tbody tr")!.children[1] as HTMLElement);
+    // 6.1 / 7.4 = 0.8243... displays as ".824" (visual consistency over raw FT_PCT of .831).
+    expect(cell.textContent).toBe(".824");
+    expect(cell.hasAttribute("data-fnba-override")).toBe(true);
+  });
+
+  it("derives FG% from rounded FGM/FGA", () => {
+    document.body.innerHTML = `
+      <table>
+        <thead><tr><th>Players</th><th>FG%</th></tr></thead>
+        <tbody>
+          <tr><td><a data-ys-playerid="6014" title="Luka">Luka</a></td><td><div>.500</div></td></tr>
+        </tbody>
+      </table>`;
+    const t = document.querySelector("table")!;
+    renderColumns(t, {
+      "6014": {
+        nbaId: 1, name: "Luka", teamAbbr: "LAL", position: null,
+        stats: { FGM: 9.9, FGA: 17.4, FG_PCT: 0.569 },
+      },
+    });
+    const cell = (t.querySelector("tbody tr")!.children[1] as HTMLElement);
+    // 9.9 / 17.4 = 0.5689... displays as ".569".
+    expect(cell.textContent).toBe(".569");
+  });
+
+  it("renders FT% as `-` when FTA is 0 (no attempts)", () => {
+    document.body.innerHTML = `
+      <table>
+        <thead><tr><th>Players</th><th>FT%</th></tr></thead>
+        <tbody>
+          <tr><td><a data-ys-playerid="6014" title="Luka">Luka</a></td><td><div>.000</div></td></tr>
+        </tbody>
+      </table>`;
+    const t = document.querySelector("table")!;
+    renderColumns(t, {
+      "6014": {
+        nbaId: 1, name: "Luka", teamAbbr: "LAL", position: null,
+        stats: { FTM: 0, FTA: 0 },
+      },
+    });
+    const cell = (t.querySelector("tbody tr")!.children[1] as HTMLElement);
+    expect(cell.textContent).toBe("-");
   });
 
   it("renders A/T as `-` when TOV is 0 (division-by-zero guard)", () => {
