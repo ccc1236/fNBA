@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { isGetPlayerStatsRequest, isBootstrapPlayersRequest } from "../../src/shared/messages.js";
+import { isGetPlayerStatsRequest, isBootstrapPlayersRequest, isGetSpiderDataRequest } from "../../src/shared/messages.js";
 
 describe("message guards", () => {
   it("accepts a well-formed getPlayerStats request", () => {
@@ -47,5 +47,32 @@ describe("isBootstrapPlayersRequest", () => {
     expect(isBootstrapPlayersRequest({
       type: "bootstrapPlayers", season: "2025-26", players: [{ yahooId: 1, name: "x", team: "y" }],
     })).toBe(false);
+  });
+});
+
+describe("isGetSpiderDataRequest", () => {
+  it("accepts a well-formed request", () => {
+    expect(
+      isGetSpiderDataRequest({
+        type: "getSpiderData",
+        yahooId: "5583",
+        perMode: "PerGame",
+      }),
+    ).toBe(true);
+  });
+
+  it("rejects requests with the wrong type", () => {
+    expect(isGetSpiderDataRequest({ type: "other", yahooId: "1", perMode: "PerGame" })).toBe(false);
+  });
+
+  it("rejects requests with a missing or non-string yahooId", () => {
+    expect(isGetSpiderDataRequest({ type: "getSpiderData", perMode: "PerGame" })).toBe(false);
+    expect(isGetSpiderDataRequest({ type: "getSpiderData", yahooId: 1, perMode: "PerGame" })).toBe(false);
+  });
+
+  it("rejects requests with an unknown perMode", () => {
+    expect(
+      isGetSpiderDataRequest({ type: "getSpiderData", yahooId: "1", perMode: "Bogus" }),
+    ).toBe(false);
   });
 });

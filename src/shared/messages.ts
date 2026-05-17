@@ -1,6 +1,7 @@
 import type { PerModeKey, PlayerStatRow, SeasonString, WindowKey, YahooPlayerId } from "./types.js";
 import type { YahooPlayer } from "../background/playerMapping.js";
 import type { FilterSettings } from "./settings.js";
+import type { GetSpiderDataRequest, GetSpiderDataResponse } from "./spider.js";
 
 export const WINDOW_KEYS: readonly WindowKey[] = ["Season", "Last5", "Last10"];
 export const PER_MODE_KEYS: readonly PerModeKey[] = ["PerGame", "Per36", "Per100Possessions"];
@@ -56,8 +57,8 @@ export interface BootstrapPlayersResponse {
   unmapped: YahooPlayerId[];
 }
 
-export type AnyRequest = GetPlayerStatsRequest | BootstrapPlayersRequest;
-export type AnyResponse = GetPlayerStatsResponse | BootstrapPlayersResponse | ErrorResponse;
+export type AnyRequest = GetPlayerStatsRequest | BootstrapPlayersRequest | GetSpiderDataRequest;
+export type AnyResponse = GetPlayerStatsResponse | BootstrapPlayersResponse | GetSpiderDataResponse | ErrorResponse;
 
 export function isBootstrapPlayersRequest(v: unknown): v is BootstrapPlayersRequest {
   if (!isObject(v)) return false;
@@ -69,6 +70,18 @@ export function isBootstrapPlayersRequest(v: unknown): v is BootstrapPlayersRequ
     if (typeof p.yahooId !== "string") return false;
     if (typeof p.name !== "string") return false;
     if (typeof p.team !== "string") return false;
+  }
+  return true;
+}
+
+export type { GetSpiderDataRequest, GetSpiderDataResponse } from "./spider.js";
+
+export function isGetSpiderDataRequest(v: unknown): v is GetSpiderDataRequest {
+  if (!isObject(v)) return false;
+  if (v.type !== "getSpiderData") return false;
+  if (typeof v.yahooId !== "string") return false;
+  if (typeof v.perMode !== "string" || !(PER_MODE_KEYS as readonly string[]).includes(v.perMode)) {
+    return false;
   }
   return true;
 }
