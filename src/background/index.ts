@@ -61,6 +61,7 @@ async function fetchWithCache(
 async function fetchMergedForWindow(
   window: WindowKey,
   perMode: PerModeKey,
+  forceFresh?: boolean,
 ): Promise<PlayerStatRow[]> {
   const season = currentSeason();
   const req: GetPlayerStatsRequest = {
@@ -68,6 +69,7 @@ async function fetchMergedForWindow(
     yahooIds: [],
     window,
     perMode,
+    forceFresh,
   };
   const [base, adv] = await Promise.all([
     fetchWithCache(req, "Base", season),
@@ -82,7 +84,7 @@ async function handleGetPlayerStats(req: GetPlayerStatsRequest): Promise<MsgResp
     const mapping = await loadMapping(season);
     const yahooToNba = new Map(mapping.map((m) => [m.yahooId, m.nbaId]));
 
-    const rows = await fetchMergedForWindow(req.window, req.perMode);
+    const rows = await fetchMergedForWindow(req.window, req.perMode, req.forceFresh);
     const byNbaId = new Map(rows.map((r) => [r.nbaId, r]));
 
     const byYahooId: Record<YahooPlayerId, PlayerStatRow | null> = {};
