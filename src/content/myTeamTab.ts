@@ -130,10 +130,14 @@ export function watchMyTeamTab(
       maxWait = setTimeout(fire, MAX_WAIT_MS);
     }
   });
+  // Yahoo's tab switches do not always toggle a class on the existing
+  // <li>s; sometimes they swap whole subnav fragments via innerHTML.
+  // Watching both attribute and childList changes catches both modes.
   observer.observe(document.body, {
     subtree: true,
     attributes: true,
     attributeFilter: ["aria-current", "aria-selected", "class"],
+    childList: true,
   });
 
   return (): void => {
