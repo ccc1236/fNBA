@@ -30,8 +30,9 @@ describe("SPIDER_AXES", () => {
     expect(formatAxisValue("TS_PCT", 0.638)).toBe(".638");
   });
 
-  it("renders USG_PCT as a 1-decimal percentage (nba.com already returns it on the 0-100 scale)", () => {
-    expect(formatAxisValue("USG_PCT", 28.4)).toBe("28.4");
+  it("multiplies USG_PCT by 100 and renders with 1 decimal, matching the injected USG% column", () => {
+    expect(formatAxisValue("USG_PCT", 0.284)).toBe("28.4");
+    expect(formatAxisValue("USG_PCT", 0.315)).toBe("31.5");
   });
 
   it("renders null as a dash", () => {
