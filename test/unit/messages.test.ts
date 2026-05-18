@@ -48,6 +48,16 @@ describe("isBootstrapPlayersRequest", () => {
       type: "bootstrapPlayers", season: "2025-26", players: [{ yahooId: 1, name: "x", team: "y" }],
     })).toBe(false);
   });
+  it("accepts the optional forceFresh flag", () => {
+    expect(isBootstrapPlayersRequest({
+      type: "bootstrapPlayers", season: "2025-26", players: [], forceFresh: true,
+    })).toBe(true);
+  });
+  it("rejects a non-boolean forceFresh", () => {
+    expect(isBootstrapPlayersRequest({
+      type: "bootstrapPlayers", season: "2025-26", players: [], forceFresh: "yes",
+    })).toBe(false);
+  });
 });
 
 describe("isGetSpiderDataRequest", () => {

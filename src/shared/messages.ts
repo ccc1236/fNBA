@@ -49,6 +49,8 @@ export interface BootstrapPlayersRequest {
   type: "bootstrapPlayers";
   season: SeasonString;
   players: YahooPlayer[];
+  /** if true, invalidate any cached NBA list before matching */
+  forceFresh?: boolean;
 }
 
 export interface BootstrapPlayersResponse {
@@ -71,6 +73,7 @@ export function isBootstrapPlayersRequest(v: unknown): v is BootstrapPlayersRequ
     if (typeof p.name !== "string") return false;
     if (typeof p.team !== "string") return false;
   }
+  if (v.forceFresh !== undefined && typeof v.forceFresh !== "boolean") return false;
   return true;
 }
 

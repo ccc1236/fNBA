@@ -147,6 +147,12 @@ Repeat for ascending sort: click PTS twice to flip Yahoo to ascending. After rel
 - On an ultra-wide monitor (viewport > 2400 px), the table caps at 2400 px and centers.
 - Yahoo's outer chrome (top branding bar, navigation) stays at its original centered width; only the main content column widens.
 
+## 9.5 Refresh button rebuilds the NBA player list
+
+- With a known unmapped player (one whose spider says "No NBA mapping for this player yet."), click the Refresh button in the filter bar.
+- Open that player's spider tooltip again. If the player has since been activated on an NBA roster (or was previously hidden by the old ROSTERSTATUS filter), they should now map and render polygons normally.
+- If they still show "No NBA mapping", the player genuinely isn't in nba.com's commonallplayers response (e.g. true G-League-only signing). Not a bug.
+
 ## 10. Spider tooltip
 
 On any My Team or Players page, with the filter bar mounted:

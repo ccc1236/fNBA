@@ -49,6 +49,33 @@ describe("bootstrapPlayers", () => {
     expect(r.unmapped).toEqual(["yX"]);
   });
 
+  it("forceFresh re-fetches the NBA list and rescues previously unmapped players", async () => {
+    // First fetch: stale list, missing the player.
+    const spy = vi.spyOn(nbaList, "fetchCommonAllPlayers");
+    spy.mockResolvedValueOnce([{ nbaId: 1, name: "Stale Roster", team: "DEN" }]);
+
+    const r1 = await bootstrapPlayers("2025-26", [
+      { yahooId: "y1", name: "Late Arrival", team: "BKN" },
+    ]);
+    expect(r1.unmapped).toEqual(["y1"]);
+
+    // Second fetch with forceFresh: the NBA list cache is dropped and re-fetched,
+    // this time containing the previously absent player.
+    spy.mockResolvedValueOnce([
+      { nbaId: 1, name: "Stale Roster", team: "DEN" },
+      { nbaId: 2, name: "Late Arrival", team: "BKN" },
+    ]);
+    const r2 = await bootstrapPlayers(
+      "2025-26",
+      [{ yahooId: "y1", name: "Late Arrival", team: "BKN" }],
+      true,
+    );
+    expect(spy).toHaveBeenCalledTimes(2);
+    expect(r2.added).toBe(1);
+    const stored = await loadMapping("2025-26");
+    expect(stored.find((m) => m.yahooId === "y1")?.nbaId).toBe(2);
+  });
+
   it("preserves existing mapping entries on re-bootstrap", async () => {
     vi.spyOn(nbaList, "fetchCommonAllPlayers").mockResolvedValue([
       { nbaId: 1629029, name: "Luka Doncic", team: "LAL" },

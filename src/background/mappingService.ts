@@ -37,7 +37,14 @@ let queue: Promise<unknown> = Promise.resolve();
 async function doBootstrap(
   season: SeasonString,
   yahooPlayers: YahooPlayer[],
+  forceFresh: boolean,
 ): Promise<BootstrapResult> {
+  if (forceFresh) {
+    // Drop cached NBA list so the next fetch picks up newly activated /
+    // recently injured / two-way players that the prior fetch missed.
+    await chrome.storage.local.remove(NBA_LIST_KEY(season));
+  }
+
   let nbaList = await loadNbaList(season);
   if (!nbaList) {
     nbaList = await fetchCommonAllPlayers(season);
@@ -61,8 +68,9 @@ async function doBootstrap(
 export async function bootstrapPlayers(
   season: SeasonString,
   yahooPlayers: YahooPlayer[],
+  forceFresh = false,
 ): Promise<BootstrapResult> {
-  const next = queue.then(() => doBootstrap(season, yahooPlayers));
+  const next = queue.then(() => doBootstrap(season, yahooPlayers, forceFresh));
   // Swallow rejections on the queue so one failure doesn't poison subsequent calls.
   queue = next.catch(() => undefined);
   return next;

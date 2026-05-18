@@ -117,7 +117,7 @@ async function handleBootstrapPlayers(
   req: BootstrapPlayersRequest,
 ): Promise<BootstrapPlayersResponse | ErrorResponse> {
   try {
-    const { added, unmapped } = await bootstrapPlayers(req.season, req.players);
+    const { added, unmapped } = await bootstrapPlayers(req.season, req.players, req.forceFresh);
     return { type: "bootstrapPlayersResponse", added, unmapped };
   } catch (e) {
     if (e instanceof RateLimitedError || e instanceof ThrottledError) {

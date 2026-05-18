@@ -9,7 +9,8 @@ const SAMPLE = {
         [203999, "Nikola Jokic", "DEN", 1, "2026"],
         [1629029, "Luka Doncic", "LAL", 1, "2026"],
         [201939, "Stephen Curry", "GSW", 1, "2026"],
-        [977, "Retired Guy", "", 0, "2010"],
+        [203954, "Injured Guy", "BKN", 0, "2026"],
+        [977, "Truly Retired", "", 0, "2010"],
       ],
     },
   ],
@@ -20,7 +21,7 @@ describe("fetchCommonAllPlayers", () => {
     vi.restoreAllMocks();
   });
 
-  it("returns active players only (ROSTERSTATUS=1)", async () => {
+  it("returns every player with a team abbreviation, regardless of ROSTERSTATUS", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn<[string], Promise<Response>>(async () =>
@@ -28,9 +29,13 @@ describe("fetchCommonAllPlayers", () => {
       ),
     );
     const players = await fetchCommonAllPlayers("2025-26");
-    expect(players).toHaveLength(3);
+    // 3 active + 1 injured (still has team) = 4. The teamless retired row drops out.
+    expect(players).toHaveLength(4);
     expect(players[0]).toEqual({ nbaId: 203999, name: "Nikola Jokic", team: "DEN" });
-    expect(players.find((p) => p.name === "Retired Guy")).toBeUndefined();
+    expect(players.find((p) => p.name === "Injured Guy")).toEqual({
+      nbaId: 203954, name: "Injured Guy", team: "BKN",
+    });
+    expect(players.find((p) => p.name === "Truly Retired")).toBeUndefined();
   });
 
   it("includes the Season param in the URL", async () => {

@@ -28,22 +28,28 @@ function parse(raw: RawResponse): NbaPlayer[] {
   const iId = rs.headers.indexOf("PERSON_ID");
   const iName = rs.headers.indexOf("DISPLAY_FIRST_LAST");
   const iTeam = rs.headers.indexOf("TEAM_ABBREVIATION");
-  const iRoster = rs.headers.indexOf("ROSTERSTATUS");
   // Guard against schema drift. Without this, missing headers produce
   // row[-1] === undefined and `undefined as number` poisons the mapping
   // with NaN IDs that silently never match.
-  if (iId === -1 || iName === -1 || iTeam === -1 || iRoster === -1) {
+  if (iId === -1 || iName === -1 || iTeam === -1) {
     throw new Error(
-      `commonallplayers schema drift: missing one of PERSON_ID/DISPLAY_FIRST_LAST/TEAM_ABBREVIATION/ROSTERSTATUS in ${JSON.stringify(rs.headers)}`,
+      `commonallplayers schema drift: missing one of PERSON_ID/DISPLAY_FIRST_LAST/TEAM_ABBREVIATION in ${JSON.stringify(rs.headers)}`,
     );
   }
+  // Include all players regardless of ROSTERSTATUS. The previous filter
+  // (ROSTERSTATUS === 1, "currently on an active roster") excluded injured,
+  // two-way, and G-League-assigned players, leaving them silently unmappable
+  // for the rest of the season. Rows with no TEAM_ABBREVIATION are still
+  // dropped because the mapping algorithm in playerMapping.ts requires a
+  // team match.
   const out: NbaPlayer[] = [];
   for (const row of rs.rowSet) {
-    if (row[iRoster] !== 1) continue;
+    const team = (row[iTeam] ?? "") as string;
+    if (!team) continue;
     out.push({
       nbaId: row[iId] as number,
       name: (row[iName] ?? "") as string,
-      team: (row[iTeam] ?? "") as string,
+      team,
     });
   }
   return out;

@@ -280,11 +280,23 @@ export async function run(_info: PageInfo): Promise<{ teardown: () => void }> {
     if (prev.perMode !== settings.perMode) spider.onPerModeChange();
   };
   const onRefresh = async (): Promise<void> => {
-    // Force-fresh: same flow with forceFresh hint passed down. The simplest
-    // path is to do a getPlayerStats with forceFresh=true.
+    // Force-fresh path. Refresh both caches:
+    //   1. league response cache (Base + Advanced stats) via getPlayerStats forceFresh
+    //   2. NBA list cache (player ID directory) via bootstrapPlayers forceFresh,
+    //      so players whose ROSTERSTATUS changed since the original fetch
+    //      (newly activated, returning from injury, etc.) get a fresh chance
+    //      at being mapped.
     bar.setStatus("Refreshing...");
     const sortInfo = detectActiveSort(table);
-    const yahooIds = scrapePlayers().map((p) => p.yahooId);
+    const players = scrapePlayers();
+    const yahooIds = players.map((p) => p.yahooId);
+    const season = currentSeasonString();
+    await send<BootstrapPlayersResponse | ErrorResponse>({
+      type: "bootstrapPlayers",
+      season,
+      players,
+      forceFresh: true,
+    });
     const r = await send<GetPlayerStatsResponse | ErrorResponse>({
       type: "getPlayerStats",
       yahooIds,
