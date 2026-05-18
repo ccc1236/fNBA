@@ -91,16 +91,22 @@ export function detectMyTeamTab(seasonString: string): MyTeamTabState {
 }
 
 /**
- * Watch the DOM for tab-state changes (active class / aria attribute flips)
- * and notify the caller. Yahoo's tab switching is in-page (no URL change),
- * so we rely on a debounced MutationObserver. Returns a stop function.
+ * Poll the DOM for tab-state changes and notify the caller on transitions.
+ *
+ * We tried a MutationObserver first, but Yahoo's in-page tab switching
+ * uses a mix of class toggles, fragment swaps, and (possibly) silent
+ * pushState updates. None of the observer configurations reliably caught
+ * all three modes, and an unfiltered subtree+childList observer drowned
+ * in noise from ad refreshes. A 1 Hz poll is simpler and proves correct
+ * regardless of how Yahoo's UI machinery decides to update.
+ *
+ * Cost: a handful of querySelectorAll calls per second. Trivial.
  */
 export function watchMyTeamTab(
   seasonString: string,
   onChange: (state: MyTeamTabState) => void,
 ): () => void {
-  let lastKind: MyTeamTabState["kind"] | null = null;
-  let timer: ReturnType<typeof setTimeout> | null = null;
+  let lastKind: MyTeamTabState["kind"] = detectMyTeamTab(seasonString).kind;
 
   const check = (): void => {
     const next = detectMyTeamTab(seasonString);
@@ -109,40 +115,7 @@ export function watchMyTeamTab(
     onChange(next);
   };
 
-  lastKind = detectMyTeamTab(seasonString).kind;
-
-  // Debounce so we react after Yahoo's AJAX-driven DOM thrash settles,
-  // but cap the wait so a steady stream of background mutations (ad
-  // refreshes, live tickers, etc.) can not stall us forever. After the
-  // first mutation we always fire within MAX_WAIT_MS.
-  const SETTLE_MS = 250;
-  const MAX_WAIT_MS = 1500;
-  let maxWait: ReturnType<typeof setTimeout> | null = null;
-  const fire = (): void => {
-    if (timer !== null) { clearTimeout(timer); timer = null; }
-    if (maxWait !== null) { clearTimeout(maxWait); maxWait = null; }
-    check();
-  };
-  const observer = new MutationObserver(() => {
-    if (timer !== null) clearTimeout(timer);
-    timer = setTimeout(fire, SETTLE_MS);
-    if (maxWait === null) {
-      maxWait = setTimeout(fire, MAX_WAIT_MS);
-    }
-  });
-  // Yahoo's tab switches do not always toggle a class on the existing
-  // <li>s; sometimes they swap whole subnav fragments via innerHTML.
-  // Watching both attribute and childList changes catches both modes.
-  observer.observe(document.body, {
-    subtree: true,
-    attributes: true,
-    attributeFilter: ["aria-current", "aria-selected", "class"],
-    childList: true,
-  });
-
-  return (): void => {
-    if (timer !== null) clearTimeout(timer);
-    if (maxWait !== null) clearTimeout(maxWait);
-    observer.disconnect();
-  };
+  const POLL_MS = 1000;
+  const interval = setInterval(check, POLL_MS);
+  return (): void => clearInterval(interval);
 }
