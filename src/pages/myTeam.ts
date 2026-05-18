@@ -46,19 +46,20 @@ export async function run(info: PageInfo): Promise<{ teardown: () => void }> {
     const banner = createWrongTabBanner({
       message: `fNBA shows on Average Stats > ${season} Season. Click to switch.`,
       onSwitchClick: () => {
-        // Click only the sub-tab anchor. Its href encodes both
-        // stat1=AS and stat2=AS_<startYear>, so Yahoo updates the
-        // top tab and the sub tab in one atomic AJAX load. Clicking
-        // the top tab and sub tab separately races Yahoo's tab-state
-        // controller and tends to leave the UI on Stats > Today.
-        if (state.switchToSubTab) {
-          state.switchToSubTab.click();
-        } else if (state.switchToTopTab) {
-          // Fallback for cases where the sub-tab is already active but
-          // the top tab is not (theoretically unreachable in current
-          // Yahoo UI, but harmless).
-          state.switchToTopTab.click();
+        // Navigate directly to the sub-tab anchor's href. Yahoo's
+        // in-page tab JS does not reliably honor a click on an anchor
+        // inside a hidden subnav, and clicking the top tab first plus
+        // the sub-tab races their AJAX controller. Letting the browser
+        // follow the href triggers a full page reload at the right URL
+        // (?stat1=AS&stat2=AS_<startYear>), which Yahoo always renders
+        // as Average Stats > current season.
+        const href = state.switchToSubTab?.getAttribute("href");
+        if (href) {
+          window.location.href = href;
+          return;
         }
+        // Fallback when the sub-tab anchor isn't in the DOM yet.
+        state.switchToTopTab?.click();
       },
     });
     table.parentElement?.insertBefore(banner, table);

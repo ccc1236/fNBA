@@ -38,7 +38,9 @@ const ACTIVE_CLASSES = [
   "is-selected",
 ];
 
-function hasActiveClass(el: HTMLElement): boolean {
+function matchesActive(el: Element): boolean {
+  if (el.getAttribute("aria-current") === "page") return true;
+  if (el.getAttribute("aria-selected") === "true") return true;
   for (const c of ACTIVE_CLASSES) {
     if (el.classList.contains(c)) return true;
   }
@@ -46,17 +48,13 @@ function hasActiveClass(el: HTMLElement): boolean {
 }
 
 function isActive(el: HTMLElement): boolean {
-  // Check the element and a small slice of its ancestors. Yahoo sometimes
-  // tags the link itself, sometimes the wrapping <li>.
-  let cur: HTMLElement | null = el;
-  let depth = 0;
-  while (cur && depth < 4) {
-    if (cur.getAttribute("aria-current") === "page") return true;
-    if (cur.getAttribute("aria-selected") === "true") return true;
-    if (hasActiveClass(cur)) return true;
-    cur = cur.parentElement;
-    depth++;
-  }
+  // Only consider the anchor itself and its wrapping <li>. Walking further
+  // up the tree introduces false positives: when Yahoo marks the visible
+  // subnav container as "selected", every sub-tab anchor inside it would
+  // look active and we would falsely report `ready` even on Last 7 Days.
+  if (matchesActive(el)) return true;
+  const li = el.closest("li");
+  if (li && matchesActive(li)) return true;
   return false;
 }
 
@@ -113,18 +111,24 @@ export function watchMyTeamTab(
 
   lastKind = detectMyTeamTab(seasonString).kind;
 
-  // Trailing-edge debounce: Yahoo's tab clicks flip the class markers
-  // immediately but the corresponding AJAX content swap completes a few
-  // hundred ms later, which can wipe anything we mounted in the
-  // intervening window. Waiting until mutations have settled lets us
-  // bind to the new table the first time.
-  const SETTLE_MS = 400;
+  // Debounce so we react after Yahoo's AJAX-driven DOM thrash settles,
+  // but cap the wait so a steady stream of background mutations (ad
+  // refreshes, live tickers, etc.) can not stall us forever. After the
+  // first mutation we always fire within MAX_WAIT_MS.
+  const SETTLE_MS = 250;
+  const MAX_WAIT_MS = 1500;
+  let maxWait: ReturnType<typeof setTimeout> | null = null;
+  const fire = (): void => {
+    if (timer !== null) { clearTimeout(timer); timer = null; }
+    if (maxWait !== null) { clearTimeout(maxWait); maxWait = null; }
+    check();
+  };
   const observer = new MutationObserver(() => {
     if (timer !== null) clearTimeout(timer);
-    timer = setTimeout(() => {
-      timer = null;
-      check();
-    }, SETTLE_MS);
+    timer = setTimeout(fire, SETTLE_MS);
+    if (maxWait === null) {
+      maxWait = setTimeout(fire, MAX_WAIT_MS);
+    }
   });
   observer.observe(document.body, {
     subtree: true,
@@ -134,6 +138,7 @@ export function watchMyTeamTab(
 
   return (): void => {
     if (timer !== null) clearTimeout(timer);
+    if (maxWait !== null) clearTimeout(maxWait);
     observer.disconnect();
   };
 }
