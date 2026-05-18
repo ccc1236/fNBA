@@ -16,6 +16,8 @@ export default defineConfig({
       ["test/unit/injectColumns.test.ts", "jsdom"],
       ["test/unit/spider-chart.test.ts", "jsdom"],
       ["test/unit/spider-tooltip.test.ts", "jsdom"],
+      ["test/unit/myTeamTab.test.ts", "jsdom"],
+      ["test/unit/wrong-tab-banner.test.ts", "jsdom"],
     ],
   },
 });

@@ -114,6 +114,14 @@ Cells re-paint with per-36-minute values. Round-trip should be sub-second (cache
 
 Even though the cache is warm, a fresh network request fires. The cells re-paint (likely identical values, but a new `fetchedAt`).
 
+## 4.5 My Team page defaults to a banner, not the overlay
+
+- Load the My Team page fresh. By default Yahoo opens "Stats > Today", which shows live game-day numbers; fNBA should NOT overlay there.
+- Confirm: no filter bar on the table; instead a small banner reads "fNBA shows on Average Stats > {season} Season. Click to switch." with a Switch tab button.
+- Click the Switch tab button. Yahoo should swap to Average Stats > {season} Season, and the banner should be replaced by the full fNBA filter bar with the overlaid columns.
+- Click the "Stats" tab again. Banner should reappear, filter bar should disappear.
+- Click any other sub-tab under Average Stats (e.g. Last 7 Days). Banner should reappear (only the current-season sub-tab triggers the overlay).
+
 ## 5. Navigate to My Team
 
 Same overlay applies. Bench and starter rows both get fNBA columns.
