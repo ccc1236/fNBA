@@ -181,8 +181,6 @@ Smoke-passes if all 11 steps succeed.
 
 ## Known limitations (current build)
 
-- **FGM/A and FTM/FTA columns do not update** when window / per-mode changes. Yahoo packs the made/attempted pair into a single cell; our override layer doesn't handle compound cells yet. Open issue tracked in `docs/superpowers/plans/2026-05-16-fnba-plan-2-followups.md`.
-- **FG% and FT% don't change on Per 36 / Per 100 swap.** Probably correct (shooting percentages are scale-invariant), pending verification.
-- **eFG% / TS% / USG% are not sortable.** Clicking those headers does nothing. Sort applies only to Yahoo's native columns.
-- **My Team page** has not been smoke-tested on the live site (only against saved fixture).
-- **Yahoo native filter de-emphasis** ("(fNBA active)" annotation) has not been visually confirmed; the heuristic may not match the live "Stats" dropdown.
+- **eFG% / TS% / USG% are not sortable.** Clicking those headers does nothing. Sort applies only to Yahoo's native columns. Deferred indefinitely; see `docs/ROADMAP.md`.
+
+For shipped releases, see [`../CHANGELOG.md`](../CHANGELOG.md). For future plans, see [`ROADMAP.md`](ROADMAP.md).
