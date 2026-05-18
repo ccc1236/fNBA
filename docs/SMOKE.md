@@ -147,6 +147,24 @@ Repeat for ascending sort: click PTS twice to flip Yahoo to ascending. After rel
 - On an ultra-wide monitor (viewport > 2400 px), the table caps at 2400 px and centers.
 - Yahoo's outer chrome (top branding bar, navigation) stays at its original centered width; only the main content column widens.
 
+## 10. Spider tooltip
+
+On any My Team or Players page, with the filter bar mounted:
+
+1. Hover any player name for ~400 ms. A spider tooltip card appears below the anchor.
+2. The card shows three polygons (Season gray, L10 teal, L5 gold) with 9 axes (3PM at top, clockwise through PTS, REB, AST, STL, BLK, TO down-arrow, TS%, USG%) and raw values stacked next to each label.
+3. Move the cursor away from both the anchor and the card. Card disappears.
+4. Click the player name. Card pins, X close button appears at top-right. Yahoo's player-page navigation does not fire.
+5. Press ESC. Card disappears.
+6. Click a different player name. Previous pin closes; new pin opens.
+7. Click the X. Card disappears.
+8. Click outside the card (any non-anchor area). Card disappears.
+9. With a card pinned, change the per-mode in the filter bar. The polygons and raw values refresh.
+10. Pick a player you know is rostered very lightly (low GP). One of L5 or L10 should render with its legend entry dimmed and that polygon omitted.
+11. If you have any unmapped players (the cell hover-title says "No mapping; fix in Options"), hover one. Card body reads "No NBA mapping. Fix in Options."
+
+Smoke-passes if all 11 steps succeed.
+
 ## Known limitations (current build)
 
 - **FGM/A and FTM/FTA columns do not update** when window / per-mode changes. Yahoo packs the made/attempted pair into a single cell; our override layer doesn't handle compound cells yet. Open issue tracked in `docs/superpowers/plans/2026-05-16-fnba-plan-2-followups.md`.
