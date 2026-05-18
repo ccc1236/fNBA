@@ -141,7 +141,7 @@ export function createSpiderTooltipController(deps: SpiderTooltipDeps): SpiderTo
     }
     if (!openCard || openCard.yahooId !== yahooId) return;
     if (resp.ok) renderReady(resp.data);
-    else if (resp.reason === "no-mapping") renderMessage("No NBA mapping. Fix in Options.");
+    else if (resp.reason === "no-mapping") renderMessage("No NBA mapping for this player yet.");
     else renderMessage("Stats unavailable. Retry from filter bar.");
   }
 

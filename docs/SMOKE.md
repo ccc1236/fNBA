@@ -161,7 +161,7 @@ On any My Team or Players page, with the filter bar mounted:
 8. Click outside the card (any non-anchor area). Card disappears.
 9. With a card pinned, change the per-mode in the filter bar. The polygons and raw values refresh.
 10. Pick a player you know is rostered very lightly (low GP). One of L5 or L10 should render with its legend entry dimmed and that polygon omitted.
-11. If you have any unmapped players (the cell hover-title says "No mapping; fix in Options"), hover one. Card body reads "No NBA mapping. Fix in Options."
+11. If you have any unmapped players, hover one. Card body reads "No NBA mapping for this player yet."
 
 Smoke-passes if all 11 steps succeed.
 

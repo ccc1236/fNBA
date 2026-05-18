@@ -81,12 +81,15 @@ eFG%, TS%, USG% have no click handler. User decided this isn't important right n
 
 ## Bigger questions to revisit later
 
-- Spider chart tooltip view (deferred to v2 per spec)
 - Injury alerts via FantasyLabs / NBA player-status field
 - Per-category fantasy scoring weights
 - Matchup and draft pages (different DOM, SPA routing)
 - Custom column picker in the options page
-- Options page itself (Plan 3 territory)
+- Options page itself (Plan 3 territory). Until this lands, the spider tooltip's no-mapping branch shows a softened message ("No NBA mapping for this player yet.") because there is no Options UI to direct the user to. Once the page exists, surface a list of unmapped Yahoo players with a manual-pick dropdown to assign the matching NBA player, and update the tooltip message to point users there.
+
+## Shipped since this doc was last updated
+
+- Spider tooltip (Plan: `docs/superpowers/plans/2026-05-17-spider-tooltip-plan.md`, spec: `docs/superpowers/specs/2026-05-17-spider-tooltip-design.md`). Hover/click radar overlay on player names showing Season vs L10 vs L5 polygons on league-percentile scale. Released as v0.0.10.
 
 ## Recommended next session bootstrap
 
