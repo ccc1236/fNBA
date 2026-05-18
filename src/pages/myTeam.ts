@@ -72,15 +72,17 @@ export async function run(info: PageInfo): Promise<{ teardown: () => void }> {
     void mountForState(next);
   });
 
-  // Force every click on an Average Stats sub-tab anchor to do a full
-  // page reload at the anchor's href. Yahoo's in-page AJAX swap for
-  // sub-tab changes does not always update the markers we use for
-  // detection, so polling missed transitions like AS > season ->
-  // AS > Last 7 Days and back. A full reload guarantees our content
-  // script runs against the new URL state.
-  function onAvgStatsClick(e: Event): void {
+  // Force every click on any stat-tab anchor (top tab OR sub-tab) to
+  // do a full page reload at the anchor's href. Yahoo's in-page AJAX
+  // for tab switches updates some markers but not others, so our
+  // polling caught the Stats-to-Average-Stats transitions only
+  // intermittently. Routing all tab clicks through window.location.href
+  // hands the navigation back to the browser, which guarantees our
+  // content script runs fresh against the new URL state. The added
+  // page-load time is small and the behavior is deterministic.
+  function onStatTabClick(e: Event): void {
     const t = e.target as Element | null;
-    const a = t?.closest<HTMLAnchorElement>('a[href*="stat1=AS&stat2="]');
+    const a = t?.closest<HTMLAnchorElement>('a[href*="stat1="]');
     if (!a) return;
     const href = a.getAttribute("href");
     if (!href) return;
@@ -88,12 +90,12 @@ export async function run(info: PageInfo): Promise<{ teardown: () => void }> {
     e.stopImmediatePropagation();
     window.location.href = href;
   }
-  document.addEventListener("click", onAvgStatsClick, true);
+  document.addEventListener("click", onStatTabClick, true);
 
   return {
     teardown: () => {
       stopWatch();
-      document.removeEventListener("click", onAvgStatsClick, true);
+      document.removeEventListener("click", onStatTabClick, true);
       if (mounted) mounted.teardown();
     },
   };
