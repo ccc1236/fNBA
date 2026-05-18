@@ -5,9 +5,14 @@
  * numbers; users rely on those raw values on game days. We only want to
  * overlay nba.com data on the Average Stats > current-season view.
  *
- * Detection works by text-matching the tab labels we know and walking up
- * the tree looking for one of several common "active" markers (Yahoo
- * renames CSS classes periodically, so we try multiple signals).
+ * Detection is href-based per CLAUDE.md's "Yahoo renames CSS classes
+ * periodically" gotcha. The top tab Average Stats is the anchor whose
+ * href contains `stat1=AS` and no `stat2=`. The current-season sub-tab
+ * inside the Average Stats subnav is the anchor whose href contains
+ * `stat2=AS_<startYear>`, where startYear is the start year of the
+ * current NBA season (e.g. 2025 for "2025-26"). The Stats and Standard
+ * Deviations subnavs also contain a "2025-26 Season" link, so text-only
+ * matching would collide.
  */
 
 export type MyTeamTabState =
@@ -19,16 +24,6 @@ export type MyTeamTabState =
       /** The current-season sub-tab element to click, or null if it could not be found / is already active. */
       switchToSubTab: HTMLElement | null;
     };
-
-const TOP_TAB = "Average Stats";
-
-function findTabByText(text: string): HTMLElement | null {
-  const candidates = document.querySelectorAll<HTMLElement>("a, button");
-  for (const el of Array.from(candidates)) {
-    if ((el.textContent ?? "").trim() === text) return el;
-  }
-  return null;
-}
 
 // Exact class tokens that mean "the user has actively selected this tab".
 // We intentionally do not include Yahoo's "Default-selected" class because
@@ -65,11 +60,25 @@ function isActive(el: HTMLElement): boolean {
   return false;
 }
 
-export function detectMyTeamTab(seasonString: string): MyTeamTabState {
-  const subTabLabel = `${seasonString} Season`;
+function findAverageStatsTopTab(): HTMLAnchorElement | null {
+  // Top-tab anchors carry stat1 but no stat2; sub-tab anchors carry both.
+  for (const a of Array.from(document.querySelectorAll<HTMLAnchorElement>('a[href*="stat1=AS"]'))) {
+    const href = a.getAttribute("href") ?? "";
+    if (!href.includes("stat2=")) return a;
+  }
+  return null;
+}
 
-  const topEl = findTabByText(TOP_TAB);
-  const subEl = findTabByText(subTabLabel);
+function findAverageStatsSeasonSubTab(seasonString: string): HTMLAnchorElement | null {
+  // seasonString is "YYYY-YY". The start year is the part before the dash.
+  const startYear = seasonString.split("-")[0];
+  if (!startYear) return null;
+  return document.querySelector<HTMLAnchorElement>(`a[href*="stat2=AS_${startYear}"]`);
+}
+
+export function detectMyTeamTab(seasonString: string): MyTeamTabState {
+  const topEl = findAverageStatsTopTab();
+  const subEl = findAverageStatsSeasonSubTab(seasonString);
 
   const topActive = topEl ? isActive(topEl) : false;
   const subActive = subEl ? isActive(subEl) : false;
@@ -102,7 +111,6 @@ export function watchMyTeamTab(
     onChange(next);
   };
 
-  // Seed the lastKind so the first real change fires.
   lastKind = detectMyTeamTab(seasonString).kind;
 
   const observer = new MutationObserver(() => {

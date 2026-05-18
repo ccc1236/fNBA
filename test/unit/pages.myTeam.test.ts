@@ -35,20 +35,22 @@ afterEach(() => { document.body.innerHTML = ""; });
  * current-season sub-tab. This helper does that mutation in place.
  */
 function activateAverageStatsSeason(season: string): void {
-  // Top tab: strip Selected from Stats, add Selected to Average Stats.
+  // Clear all Selected / Default-selected markers on tab list items.
   for (const li of Array.from(document.querySelectorAll<HTMLElement>("li.Navitem"))) {
     li.classList.remove("Selected");
-  }
-  const top = Array.from(document.querySelectorAll<HTMLElement>("a.Navtarget"))
-    .find((a) => (a.textContent ?? "").trim() === "Average Stats");
-  top?.closest("li")?.classList.add("Selected");
-
-  // Sub tab: mark "{season} Season" as Selected and clear Default-selected.
-  for (const li of Array.from(document.querySelectorAll<HTMLElement>("li.Navitem"))) {
     li.classList.remove("Default-selected");
   }
-  const sub = Array.from(document.querySelectorAll<HTMLElement>("a.Navtarget"))
-    .find((a) => (a.textContent ?? "").trim() === `${season} Season`);
+  // Top tab Average Stats: anchor whose href contains stat1=AS but no stat2.
+  const tops = Array.from(document.querySelectorAll<HTMLAnchorElement>('a[href*="stat1=AS"]'));
+  for (const a of tops) {
+    if (!(a.getAttribute("href") ?? "").includes("stat2=")) {
+      a.closest("li")?.classList.add("Selected");
+      break;
+    }
+  }
+  // Current-season sub-tab inside the Average Stats subnav: stat2=AS_<startYear>.
+  const startYear = season.split("-")[0]!;
+  const sub = document.querySelector<HTMLAnchorElement>(`a[href*="stat2=AS_${startYear}"]`);
   sub?.closest("li")?.classList.add("Selected");
 }
 
