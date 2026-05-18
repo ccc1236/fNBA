@@ -1,12 +1,15 @@
 import { scrapePlayers, findStatsTable } from "../content/yahoo.js";
 import { renderColumns, clearFnbaCells } from "../content/injectColumns.js";
 import { createFilterBar, type FilterBarHandle } from "../ui/filter-bar.js";
+import { createSpiderTooltipController, type SpiderTooltipHandle } from "../ui/spider-tooltip.js";
 import type { PageInfo } from "../content/pageDetect.js";
 import type {
   BootstrapPlayersRequest,
   BootstrapPlayersResponse,
   GetPlayerStatsRequest,
   GetPlayerStatsResponse,
+  GetSpiderDataRequest,
+  GetSpiderDataResponse,
   ErrorResponse,
 } from "../shared/messages.js";
 import type { FilterSettings } from "../shared/settings.js";
@@ -262,10 +265,18 @@ export async function run(_info: PageInfo): Promise<{ teardown: () => void }> {
 
   await paint(table, bar, settings);
 
+  const spider: SpiderTooltipHandle = createSpiderTooltipController({
+    table,
+    send: (req: GetSpiderDataRequest) => send<GetSpiderDataResponse>(req),
+    getPerMode: () => bar.getSettings().perMode,
+  });
+
   const onChange = async (e: Event): Promise<void> => {
     const ce = e as CustomEvent<FilterSettings>;
+    const prev = settings;
     settings = ce.detail;
     await paint(table, bar, settings);
+    if (prev.perMode !== settings.perMode) spider.onPerModeChange();
   };
   const onRefresh = async (): Promise<void> => {
     // Force-fresh: same flow with forceFresh hint passed down. The simplest
@@ -294,6 +305,7 @@ export async function run(_info: PageInfo): Promise<{ teardown: () => void }> {
 
   return {
     teardown: () => {
+      spider.teardown();
       restoreScroll();
       bar.removeEventListener("fnba-filter-change", onChange);
       bar.removeEventListener("fnba-filter-refresh", onRefresh);
