@@ -102,7 +102,7 @@ export function watchMyTeamTab(
   onChange: (state: MyTeamTabState) => void,
 ): () => void {
   let lastKind: MyTeamTabState["kind"] | null = null;
-  let scheduled = false;
+  let timer: ReturnType<typeof setTimeout> | null = null;
 
   const check = (): void => {
     const next = detectMyTeamTab(seasonString);
@@ -113,13 +113,18 @@ export function watchMyTeamTab(
 
   lastKind = detectMyTeamTab(seasonString).kind;
 
+  // Trailing-edge debounce: Yahoo's tab clicks flip the class markers
+  // immediately but the corresponding AJAX content swap completes a few
+  // hundred ms later, which can wipe anything we mounted in the
+  // intervening window. Waiting until mutations have settled lets us
+  // bind to the new table the first time.
+  const SETTLE_MS = 400;
   const observer = new MutationObserver(() => {
-    if (scheduled) return;
-    scheduled = true;
-    queueMicrotask(() => {
-      scheduled = false;
+    if (timer !== null) clearTimeout(timer);
+    timer = setTimeout(() => {
+      timer = null;
       check();
-    });
+    }, SETTLE_MS);
   });
   observer.observe(document.body, {
     subtree: true,
@@ -127,5 +132,8 @@ export function watchMyTeamTab(
     attributeFilter: ["aria-current", "aria-selected", "class"],
   });
 
-  return (): void => observer.disconnect();
+  return (): void => {
+    if (timer !== null) clearTimeout(timer);
+    observer.disconnect();
+  };
 }

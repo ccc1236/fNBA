@@ -46,11 +46,19 @@ export async function run(info: PageInfo): Promise<{ teardown: () => void }> {
     const banner = createWrongTabBanner({
       message: `fNBA shows on Average Stats > ${season} Season. Click to switch.`,
       onSwitchClick: () => {
-        // Click the top tab first, then the season sub-tab. Yahoo's handlers
-        // run in DOM order; the MutationObserver picks up the resulting
-        // class / aria changes and triggers the remount.
-        state.switchToTopTab?.click();
-        state.switchToSubTab?.click();
+        // Click only the sub-tab anchor. Its href encodes both
+        // stat1=AS and stat2=AS_<startYear>, so Yahoo updates the
+        // top tab and the sub tab in one atomic AJAX load. Clicking
+        // the top tab and sub tab separately races Yahoo's tab-state
+        // controller and tends to leave the UI on Stats > Today.
+        if (state.switchToSubTab) {
+          state.switchToSubTab.click();
+        } else if (state.switchToTopTab) {
+          // Fallback for cases where the sub-tab is already active but
+          // the top tab is not (theoretically unreachable in current
+          // Yahoo UI, but harmless).
+          state.switchToTopTab.click();
+        }
       },
     });
     table.parentElement?.insertBefore(banner, table);
