@@ -269,6 +269,7 @@ export async function run(_info: PageInfo): Promise<{ teardown: () => void }> {
     table,
     send: (req: GetSpiderDataRequest) => send<GetSpiderDataResponse>(req),
     getPerMode: () => bar.getSettings().perMode,
+    safeAreas: [bar],
   });
 
   const onChange = async (e: Event): Promise<void> => {

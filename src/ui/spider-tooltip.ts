@@ -49,6 +49,12 @@ export interface SpiderTooltipDeps {
   table: HTMLTableElement;
   send: (req: GetSpiderDataRequest) => Promise<GetSpiderDataResponse>;
   getPerMode: () => PerModeKey;
+  /**
+   * Elements whose clicks should NOT dismiss a pinned card. Use this to
+   * exclude UI surfaces the user is allowed to interact with while the
+   * tooltip stays pinned (e.g. the filter bar's dropdowns).
+   */
+  safeAreas?: readonly Element[];
 }
 
 export interface SpiderTooltipHandle {
@@ -197,6 +203,11 @@ export function createSpiderTooltipController(deps: SpiderTooltipDeps): SpiderTo
     const t = e.target as Node;
     if (openCard.host.contains(t)) return;
     if (t instanceof Element && t.closest("a[data-ys-playerid]")) return;
+    if (deps.safeAreas) {
+      for (const el of deps.safeAreas) {
+        if (el.contains(t)) return;
+      }
+    }
     dismiss();
   }
 

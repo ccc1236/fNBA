@@ -134,4 +134,26 @@ describe("spider tooltip controller", () => {
       expect(host?.shadowRoot?.textContent ?? "").toContain("No NBA mapping");
     });
   });
+
+  it("does not dismiss a pinned card when clicking inside a safeArea element", async () => {
+    controller.teardown();
+    const safe = document.createElement("div");
+    safe.id = "safe";
+    const inner = document.createElement("select");
+    safe.appendChild(inner);
+    document.body.appendChild(safe);
+
+    controller = createSpiderTooltipController({
+      table: row.table,
+      send,
+      getPerMode: () => "PerGame",
+      safeAreas: [safe],
+    });
+
+    click();
+    await vi.waitFor(() => expect(document.querySelector(".fnba-spider-host")).not.toBeNull());
+
+    inner.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    expect(document.querySelector(".fnba-spider-host")).not.toBeNull();
+  });
 });
